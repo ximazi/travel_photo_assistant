@@ -31,6 +31,13 @@ def _default_timeout() -> float:
         return 120.0
 
 
+def _planner_metadata(runtime_input: RuntimeInput) -> dict[str, Any]:
+    """The image travels in multimodal parts, not as local paths or duplicate bytes."""
+    payload = runtime_input.to_dict()
+    payload["frame"].pop("image_attachments", None)
+    return payload
+
+
 def _detect_mime(raw: bytes) -> str:
     """Detect the real image type from magic bytes (never trust the label)."""
     if raw.startswith(b"\x89PNG\r\n\x1a\n"):
@@ -204,7 +211,7 @@ class OpenAICompatibleVisionAdapter(VisionModelAdapter):
         feedback: str | None = None,
     ) -> dict[str, Any]:
         payload = {
-            "runtime_input": runtime_input.to_dict(),
+            "runtime_input": _planner_metadata(runtime_input),
             "scene_observation": observation,
             "shot_cards": [c.to_dict() for c in shot_cards],
         }
@@ -272,12 +279,12 @@ class GeminiVisionAdapter(VisionModelAdapter):
         }
         url = (
             f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{self.model_name}:generateContent?key={self.api_key}"
+            f"{self.model_name}:generateContent"
         )
         req = urllib.request.Request(
             url=url,
             data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", "x-goog-api-key": self.api_key},
             method="POST",
         )
         try:
@@ -322,7 +329,7 @@ class GeminiVisionAdapter(VisionModelAdapter):
         feedback: str | None = None,
     ) -> dict[str, Any]:
         payload = {
-            "runtime_input": runtime_input.to_dict(),
+            "runtime_input": _planner_metadata(runtime_input),
             "scene_observation": observation,
             "shot_cards": [c.to_dict() for c in shot_cards],
         }
