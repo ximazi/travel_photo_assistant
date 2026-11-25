@@ -9,7 +9,11 @@ from unittest.mock import patch
 from PIL import Image
 
 from travel_photo_assistant.adapters.providers import GeminiVisionAdapter
-from travel_photo_assistant.field_pilot import main, prepare_photo
+from travel_photo_assistant.adapters.mock import RuleBasedOfflineVisionAdapter
+from travel_photo_assistant.config import AssetPaths
+from travel_photo_assistant.evaluation import _base_runtime_dict
+from travel_photo_assistant.field_pilot import main, prepare_photo, run_comparison
+from travel_photo_assistant.models import RuntimeInput
 
 
 class FieldPilotTest(unittest.TestCase):
@@ -62,3 +66,35 @@ class FieldPilotTest(unittest.TestCase):
                 main(args)
             self.assertEqual(ex.exception.code, 2)
             transport.assert_not_called()
+
+    def test_shared_observation_is_sent_to_three_planners_once(self):
+        req = RuntimeInput.from_dict(_base_runtime_dict(hints={
+            "scene_tags": ["coast", "leading_line"],
+            "anchors": [{"anchor_id": "coast_path", "kind": "leading_line", "description": "海岸线",
+                         "bbox": [0.05, 0.4, 0.4, 0.9], "points": [[0.05, 0.9], [0.4, 0.4]]}],
+        }))
+        adapter = RuleBasedOfflineVisionAdapter()
+        with patch.object(adapter, "observe", wraps=adapter.observe) as obs, \
+             patch.object(adapter, "plan", wraps=adapter.plan) as plan:
+            arms, report = run_comparison(adapter, AssetPaths.default(), req)
+            self.assertEqual(obs.call_count, 1)
+            self.assertEqual(plan.call_count, 3)
+            for call in plan.call_args_list[1:]:
+                self.assertEqual(call.args[1], plan.call_args_list[0].args[1])
+                self.assertIsNot(call.args[1], plan.call_args_list[0].args[1])
+            self.assertEqual([len(call.args[2]) for call in plan.call_args_list], [0, 3, 1])
+        self.assertEqual(report["status"], "needs_human_review")
+        self.assertEqual((report["observer_requests"], report["planner_requests"]), (1, 3))
+        self.assertTrue(all(result.accepted for result, _ in arms.values()))
+
+    def test_hold_baseline_skips_later_arms(self):
+        req = RuntimeInput.from_dict(_base_runtime_dict(
+            subject_id=None, subject_count=2, hints={"detected_person_count": 2, "scene_tags": ["city_street"]},
+        ))
+        adapter = RuleBasedOfflineVisionAdapter()
+        arms, report = run_comparison(adapter, AssetPaths.default(), req)
+        self.assertEqual(list(arms), ["prompt_only"])
+        self.assertEqual(arms["prompt_only"][0].plan["status"], "hold")
+        self.assertEqual(report["status"], "comparison_not_scored")
+        self.assertEqual((report["observer_requests"], report["planner_requests"]), (1, 1))
+        self.assertEqual(list(report["skipped_modes"]), ["fixed_cards", "retrieved_cards"])
