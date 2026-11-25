@@ -12,12 +12,14 @@ rewritten. Anything unrecognized is left untouched so the normal schema
 validation still rejects it — the normalizer never widens the contract, it
 only folds near-miss spellings onto the canonical term.
 
-Every rewrite is recorded so the change is auditable.
+Every rewrite is recorded so the change is auditable. Known directional-light
+values are additionally downgraded when not backed by an applicable visual fact.
 """
 
 from __future__ import annotations
 
 import copy
+import re
 from typing import Any
 
 
@@ -455,6 +457,53 @@ def _canonical_set(table: dict[tuple[str, ...], dict[str, str]], path: tuple[str
     return set(table.get(path, {}).values()) | set(table.get(path, {}).keys())
 
 
+# A localized light fact must explicitly describe the claimed direction. These
+# conservative cues are not optical inference; unknown is always preferable to
+# upgrading an appearance-only observation such as dappled ground shadows.
+_DIRECTION_EVIDENCE = {
+    "front": re.compile(r"\b(?:front(?:al)?[ -]light(?:ing|ed)?|light (?:comes|falls) from (?:the )?front)\b|正面光|顺光", re.I),
+    "side": re.compile(r"\b(?:side[ -]light(?:ing|ed)?|light (?:comes|falls) from (?:the )?(?:left|right|side))\b|侧光|侧面来光|从[左右]侧打光", re.I),
+    "back": re.compile(r"\b(?:back[ -]?light(?:ing|ed)?|light (?:comes|falls) from behind)\b|逆光|背光", re.I),
+}
+_NEGATED_DIRECTION = re.compile(
+    r"\b(?:no|not|unknown|unclear|uncertain|ambiguous|cannot|insufficient)\b|无法|不能|并非|不是|不确定|看不出|无证据", re.I
+)
+
+
+def _downgrade_unsupported_direction(payload: dict[str, Any], changes: list[str]) -> None:
+    light = payload.get("light")
+    facts = payload.get("facts")
+    if not isinstance(light, dict) or not isinstance(facts, list):
+        return  # Let schema validation report malformed structures.
+    direction = light.get("direction_estimate")
+    refs = light.get("fact_ids")
+    if not isinstance(direction, str) or direction not in _DIRECTION_EVIDENCE or not isinstance(refs, list):
+        return
+    for fact in facts:
+        if not isinstance(fact, dict) or fact.get("fact_id") not in refs:
+            continue
+        if fact.get("kind") != "light" or fact.get("source") not in ("vlm_visual", "local_vision"):
+            continue
+        if fact.get("strength") not in ("medium", "high"):
+            continue
+        region = fact.get("region")
+        if (
+            not isinstance(region, list) or len(region) != 4
+            or not all(type(v) in (int, float) and 0 <= v <= 1 for v in region)
+            or region[0] >= region[2] or region[1] >= region[3]
+        ):
+            continue
+        statement = fact.get("statement")
+        if not isinstance(statement, str) or _NEGATED_DIRECTION.search(statement):
+            continue
+        # Contradictory cues are not support for a single direction.
+        matches = [key for key, pattern in _DIRECTION_EVIDENCE.items() if pattern.search(statement)]
+        if matches == [direction]:
+            return
+    light["direction_estimate"] = "unknown"
+    changes.append(f"light.direction_estimate: '{direction}' -> 'unknown' (no linked directional visual evidence)")
+
+
 def normalize_observation(
     payload: dict[str, Any],
 ) -> tuple[dict[str, Any], list[str]]:
@@ -462,6 +511,7 @@ def normalize_observation(
     cloned = copy.deepcopy(payload)
     changes: list[str] = []
     _apply(cloned, OBSERVATION_ENUMS, changes)
+    _downgrade_unsupported_direction(cloned, changes)
     return cloned, changes
 
 
