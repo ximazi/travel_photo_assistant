@@ -50,6 +50,8 @@ class FastTickRequest(BaseModel):
     user_goal_version: int = 1
     manual_confirmations: list[str] = []
     vlm_verified_checks: list[str] = []
+    frame_seq: int | None = None
+    visual_review: dict[str, Any] | None = None
 
 
 class CoordTransformRequest(BaseModel):

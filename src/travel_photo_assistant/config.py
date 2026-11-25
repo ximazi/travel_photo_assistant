@@ -76,6 +76,7 @@ class RuntimeConfig:
     retrieval_mode: str = "retrieved_cards"  # prompt_only | fixed_cards | retrieved_cards
     max_retrieved_cards: int = 3
     jitter_deadband: float = 0.035  # Normalized coordinate tolerance for fast-loop anti-oscillation
+    visual_review_timeout_s: float = 5.0  # Interactive fallback, not a measured latency target.
     stable_frames_required: int = 2  # Consecutive frames inside target range before completion
     max_stale_drop_log: int = 50
     # Real vendors do not reliably enforce enum values in their response schemas.

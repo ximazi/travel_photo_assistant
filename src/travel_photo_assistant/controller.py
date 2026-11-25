@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
+from time import monotonic
+from uuid import uuid4
 
 from .adapters.base import VisionModelAdapter
 from .config import AssetPaths, RuntimeConfig
@@ -17,6 +19,20 @@ from .models import LocalVisionSnapshot, RuntimeInput
 from .normalizer import normalize_observation, normalize_plan
 from .schema_validator import SchemaValidator
 from .validators import BusinessRuleValidator, ValidationResult
+
+
+@dataclass
+class PendingVisualReview:
+    review_id: str
+    action_id: str
+    check_type: str
+    after_frame_id: str
+    after_frame_seq: int
+    transform_version: int
+    deadline: float
+
+
+_VISUAL_CHECKS = {"head_obstacle_separated", "pose_visually_confirmed", "fresh_frame_received"}
 
 
 @dataclass
@@ -36,6 +52,8 @@ class ActiveSessionState:
     stable_in_range_count: int = 0
     last_guidance_direction: str | None = None
     stale_drops: list[dict[str, Any]] = field(default_factory=list)
+    pending_visual_review: PendingVisualReview | None = None
+    visual_review_paused: bool = False
 
 
 @dataclass
@@ -66,6 +84,8 @@ class FastLoopResult:
     invalidation_reasons: list[str] = field(default_factory=list)
     requires_reobserve: bool = False
     message: str = ""
+    visual_review_request: dict[str, Any] | None = None
+    can_shoot_without_confirmation: bool = False
 
 
 class TravelPhotoController:
@@ -314,6 +334,9 @@ class TravelPhotoController:
             invalidation_reasons.append("light_materially_changed")
 
         if invalidation_reasons:
+            self.state.pending_visual_review = None
+            self.state.visual_review_paused = False
+            self.state.active_plan = None
             return FastLoopResult(
                 status="invalidated",
                 active_action_id=None,
@@ -327,6 +350,9 @@ class TravelPhotoController:
         # 2. Tracking lost -> pause arrows immediately (planner prompt & integration_notes)
         if not snapshot.tracking_ok or snapshot.subject_bbox is None:
             self.state.stable_in_range_count = 0
+            if self.state.pending_visual_review is not None:
+                self.state.pending_visual_review = None
+                self.state.visual_review_paused = True
             return FastLoopResult(
                 status="paused_tracking_lost",
                 active_action_id=plan.get("active_action_id"),
@@ -354,7 +380,13 @@ class TravelPhotoController:
         check_type = check["type"]
 
         # 3. Evaluate predefined completion checks (Rule III.9)
-        completed, direction, msg = self._evaluate_completion_check(check_type, check, snapshot, action_id)
+        if check_type in _VISUAL_CHECKS:
+            waiting = self._wait_for_visual_review(snapshot, action_id, check_type)
+            if waiting:
+                return waiting
+            completed, direction, msg = True, "hold", "已通过新帧视觉复核。"
+        else:
+            completed, direction, msg = self._evaluate_completion_check(check_type, check, snapshot, action_id)
         if completed:
             self.state.stable_in_range_count += 1
             required = self.config.stable_frames_required if check.get("check_by") == "local_vision" else 1
@@ -380,8 +412,8 @@ class TravelPhotoController:
                     status="action_completed",
                     active_action_id=next_id,
                     guidance_direction="hold",
-                    show_overlay_arrows=True,
-                    requires_reobserve=(check.get("check_by") == "vlm_review"),
+                    show_overlay_arrows=False,
+                    requires_reobserve=False,
                     message=f"动作 {action_id} 已完成，激活下一步 {next_id}。",
                 )
             return FastLoopResult(
@@ -403,6 +435,55 @@ class TravelPhotoController:
             requires_reobserve=False,
             message=msg,
         )
+
+    def _wait_for_visual_review(self, snapshot, action_id, check_type):
+        def result(status, message, request=None, can_shoot=False):
+            return FastLoopResult(status=status, active_action_id=action_id, guidance_direction=None,
+                                  show_overlay_arrows=False, requires_reobserve=request is not None,
+                                  message=message, visual_review_request=request,
+                                  can_shoot_without_confirmation=can_shoot)
+
+        def pause(status, message):
+            self.state.pending_visual_review = None
+            self.state.visual_review_paused = True
+            return result(status, message, can_shoot=True)
+
+        if self.state.visual_review_paused:
+            return result("review_paused", "视觉复核已暂停，可自行拍摄或重新开始引导。", can_shoot=True)
+        pending = self.state.pending_visual_review
+        seq = snapshot.frame_seq
+        if pending is None:
+            if type(seq) is not int or seq < 0:
+                return result("in_progress", "新帧未带顺序编号，暂不能复核；仍可自行拍摄。", can_shoot=True)
+            pending = PendingVisualReview(uuid4().hex, action_id, check_type, snapshot.frame_id, seq,
+                                          snapshot.transform_version, monotonic() + self.config.visual_review_timeout_s)
+            self.state.pending_visual_review = pending
+            return result("in_progress", "请采集一帧新画面进行复核。", {
+                "review_id": pending.review_id, "action_id": action_id, "check_type": check_type,
+                "after_frame_id": pending.after_frame_id, "after_frame_seq": seq,
+                "scene_version": snapshot.scene_version, "goal_version": snapshot.user_goal_version,
+                "transform_version": snapshot.transform_version,
+                "timeout_s": self.config.visual_review_timeout_s,
+            }, can_shoot=True)
+        if snapshot.transform_version != pending.transform_version:
+            return pause("review_paused", "预览变换已更新，旧复核作废；可自行拍摄或重新引导。")
+        if monotonic() >= pending.deadline:
+            return pause("review_timed_out", "视觉复核超时，未确认该动作；可自行拍摄。")
+        review = snapshot.visual_review
+        if isinstance(review, dict) and review.get("review_id") == pending.review_id and (
+            review.get("action_id") == pending.action_id and review.get("check_type") == pending.check_type
+        ):
+            if review.get("status") == "failed":
+                return pause("review_paused", "视觉复核未通过，未确认动作；可自行拍摄或重新引导。")
+            verified_seq = review.get("frame_seq")
+            verified_id = review.get("frame_id")
+            if (review.get("status") == "passed" and type(seq) is int and type(verified_seq) is int
+                and isinstance(verified_id, str) and bool(verified_id) and verified_id != pending.after_frame_id
+                and pending.after_frame_seq < verified_seq <= seq
+                and (verified_seq != seq or verified_id == snapshot.frame_id)):
+                self.state.pending_visual_review = None
+                return None
+        return result("in_progress", "正在等待同一动作的新帧视觉复核。", can_shoot=True)
 
     def _evaluate_completion_check(
         self,
@@ -440,11 +521,6 @@ class TravelPhotoController:
             if action_id in snapshot.manual_confirmations or "manual_confirmed" in snapshot.manual_confirmations:
                 return True, "hold", "用户已手动确认前置条件。"
             return False, None, "等待用户确认现场条件。"
-
-        if check_type in {"head_obstacle_separated", "pose_visually_confirmed", "fresh_frame_received"}:
-            if check_type in snapshot.vlm_verified_checks or action_id in snapshot.vlm_verified_checks:
-                return True, "hold", f"已通过新帧视觉复核（{check_type}）。"
-            return False, None, f"等待新帧视觉复核（{check_type}），不可仅凭端侧猜测完成。"
 
         if check_type == "camera_metadata_match":
             ref = check.get("reference_id")
@@ -508,6 +584,8 @@ class TravelPhotoController:
         self.state.completed_action_ids = []
         self.state.stable_in_range_count = 0
         self.state.last_guidance_direction = None
+        self.state.pending_visual_review = None
+        self.state.visual_review_paused = False
 
     @staticmethod
     def _build_safe_fallback_plan(
