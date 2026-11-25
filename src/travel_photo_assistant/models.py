@@ -239,7 +239,9 @@ class LocalVisionSnapshot:
     light_materially_changed: bool = False
     user_goal_version: int = 1
     manual_confirmations: list[str] = field(default_factory=list)
-    vlm_verified_checks: list[str] = field(default_factory=list)
+    vlm_verified_checks: list[str] = field(default_factory=list)  # Legacy, ignored for completion.
+    frame_seq: int | None = None
+    visual_review: dict[str, Any] | None = None
 
 
 @dataclass

@@ -98,34 +98,58 @@ class TestControllerAndEvaluationCases(unittest.TestCase):
         self.assertEqual(tick.status, "action_completed")
         self.assertEqual(tick.active_action_id, "a2")
 
-        # Tick 4: a2 requires vlm_review (pose_visually_confirmed), cannot complete without vlm_verified_checks
-        t_wait = ctrl.run_fast_tick(
-            LocalVisionSnapshot(
-                frame_id="f14",
-                scene_version=1,
-                current_lens_id="main_1x",
-                orientation="portrait",
-                crop_signature="contain:3:4",
-                tracked_subject_id="person_1",
-                subject_bbox=[0.53, 0.32, 0.77, 0.90],
+        self.assertFalse(tick.requires_reobserve)
+        def snap(seq, **extra):
+            return LocalVisionSnapshot(
+                frame_id=f"f{seq}", frame_seq=seq, scene_version=1, current_lens_id="main_1x",
+                orientation="portrait", crop_signature="contain:3:4", tracked_subject_id="person_1",
+                subject_bbox=[0.53, 0.32, 0.77, 0.90], **extra,
             )
-        )
-        self.assertEqual(t_wait.status, "in_progress")
 
-        # Tick 5: vlm_review confirms pose -> ready_to_shoot
-        t_done = ctrl.run_fast_tick(
-            LocalVisionSnapshot(
-                frame_id="f15",
-                scene_version=1,
-                current_lens_id="main_1x",
-                orientation="portrait",
-                crop_signature="contain:3:4",
-                tracked_subject_id="person_1",
-                subject_bbox=[0.53, 0.32, 0.77, 0.90],
-                vlm_verified_checks=["pose_visually_confirmed"],
-            )
-        )
-        self.assertEqual(t_done.status, "ready_to_shoot")
+        from unittest.mock import patch
+        with patch("travel_photo_assistant.controller.monotonic", return_value=100.0) as clock:
+            t_wait = ctrl.run_fast_tick(snap(14))
+            self.assertEqual(t_wait.status, "in_progress")
+            self.assertTrue(t_wait.requires_reobserve)
+            self.assertFalse(t_wait.show_overlay_arrows)
+            self.assertTrue(t_wait.can_shoot_without_confirmation)
+            request = t_wait.visual_review_request
+            self.assertEqual(request["action_id"], "a2")
+            self.assertEqual(request["after_frame_seq"], 14)
+            reply = {"review_id": request["review_id"], "action_id": "a2",
+                     "check_type": "pose_visually_confirmed", "status": "passed",
+                     "frame_id": "f15", "frame_seq": 15}
+
+            for verification in (
+                {"vlm_verified_checks": ["pose_visually_confirmed"]},
+                {"visual_review": {**reply, "frame_id": "f14", "frame_seq": 14}},
+                {"visual_review": {**reply, "review_id": "previous-request"}},
+                {"visual_review": {**reply, "action_id": "old-action"}},
+            ):
+                waiting = ctrl.run_fast_tick(snap(15, **verification))
+                self.assertEqual(waiting.status, "in_progress")
+                self.assertFalse(waiting.requires_reobserve)
+                self.assertFalse(waiting.show_overlay_arrows)
+                self.assertIsNone(waiting.visual_review_request)
+
+            # A real client can deliver the result on a tick after the reviewed frame.
+            done = ctrl.run_fast_tick(snap(16, visual_review=reply))
+            self.assertEqual(done.status, "ready_to_shoot")
+            self.assertFalse(done.requires_reobserve)
+            self.assertFalse(done.show_overlay_arrows)
+
+            # Revisit the same review step with no response. The old nonce cannot finish it.
+            ctrl.state.active_action_index = 1
+            retry_start = ctrl.run_fast_tick(snap(17))
+            self.assertNotEqual(retry_start.visual_review_request["review_id"], request["review_id"])
+            clock.return_value = 106.0
+            timeout = ctrl.run_fast_tick(snap(18, visual_review=reply))
+            self.assertEqual(timeout.status, "review_timed_out")
+            self.assertTrue(timeout.can_shoot_without_confirmation)
+            self.assertFalse(timeout.show_overlay_arrows)
+            self.assertFalse(timeout.requires_reobserve)
+            self.assertEqual(ctrl.state.active_action_index, 1)
+            self.assertEqual(ctrl.run_fast_tick(snap(19)).status, "review_paused")
 
 
 if __name__ == "__main__":
