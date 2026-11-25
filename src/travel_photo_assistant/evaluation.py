@@ -333,7 +333,8 @@ class EvaluationHarness:
         req = RuntimeInput.from_dict(
             _base_runtime_dict(
                 priority="看清面部，保留海边环境",
-                hints={"scene_tags": ["coast"], "anchors": []},  # No leading_line!
+                # The scene label itself must not satisfy the visual prerequisite.
+                hints={"scene_tags": ["coast", "leading_line"], "anchors": []},
             )
         )
         res = ctrl.run_slow_loop(req, retrieval_mode=RetrievalMode.RETRIEVED_CARDS)

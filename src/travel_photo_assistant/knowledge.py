@@ -114,7 +114,9 @@ class ShotCardRetriever:
         # Mode C: metadata + visual evidence + constraint gating
         obs_tags = set(observation.get("scene_tags", []))
         inferred_visual_tags = self._extract_visual_evidence_tags(observation)
-        all_visual_tags = obs_tags | inferred_visual_tags
+        # A scene label is not proof that a composition anchor exists.
+        # Restrict leading_line to geometry attached to a structured anchor.
+        all_visual_tags = (obs_tags - {"leading_line"}) | inferred_visual_tags
         goal_tags = set(self._infer_goal_tags(runtime_input))
 
         evaluations: list[CardEvaluation] = []
@@ -145,7 +147,7 @@ class ShotCardRetriever:
 
         for anchor in observation.get("anchors", []):
             kind = anchor.get("kind")
-            if kind == "leading_line":
+            if kind == "leading_line" and ShotCardRetriever._has_anchor_geometry(anchor):
                 tags.add("leading_line")
             elif kind == "landmark":
                 tags.add("landmark")
@@ -173,6 +175,29 @@ class ShotCardRetriever:
             tags.add("dappled_face_light")
 
         return tags
+
+    @staticmethod
+    def _has_anchor_geometry(anchor: dict[str, Any]) -> bool:
+        # The controller already checks schema and bbox ordering. Recheck the
+        # shape here because the retriever may also be called directly.
+        def unit_number(value: Any) -> bool:
+            return type(value) in (int, float) and 0.0 <= value <= 1.0
+
+        bbox = anchor.get("bbox")
+        if (
+            isinstance(bbox, list) and len(bbox) == 4
+            and all(unit_number(value) for value in bbox)
+            and bbox[0] < bbox[2] and bbox[1] < bbox[3]
+        ):
+            return True
+        points = anchor.get("points")
+        if not isinstance(points, list):
+            return False
+        return len({
+            tuple(point) for point in points
+            if isinstance(point, list) and len(point) == 2
+            and all(unit_number(value) for value in point)
+        }) >= 2
 
     @staticmethod
     def _infer_goal_tags(runtime_input: RuntimeInput) -> list[str]:

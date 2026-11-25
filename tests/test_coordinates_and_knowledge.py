@@ -64,7 +64,10 @@ class TestCoordinatesAndKnowledge(unittest.TestCase):
             "status": "observed",
             "scene_tags": ["coast", "single_person", "leading_line"],
             "selected_subject": {"subject_id": "person_1"},
-            "anchors": [{"anchor_id": "c1", "kind": "leading_line", "description": "岸线"}],
+            "anchors": [{
+                "anchor_id": "c1", "kind": "leading_line", "description": "岸线",
+                "points": [[0.1, 0.4], [0.8, 0.8]],
+            }],
             "issues": [],
             "light": {"appearance": "柔光"},
         }
@@ -90,7 +93,7 @@ class TestCoordinatesAndKnowledge(unittest.TestCase):
         # Mode C without leading_line evidence -> MUST reject COAST_LINE_ENV_01 (E11)
         obs_coast_no_line = {
             "status": "observed",
-            "scene_tags": ["coast", "single_person"],
+            "scene_tags": ["coast", "single_person", "leading_line"],
             "selected_subject": {"subject_id": "person_1"},
             "anchors": [],
             "issues": [],
@@ -98,6 +101,18 @@ class TestCoordinatesAndKnowledge(unittest.TestCase):
         }
         res_c_missing = retriever.retrieve(obs_coast_no_line, rt, mode=RetrievalMode.RETRIEVED_CARDS)
         self.assertNotIn("COAST_LINE_ENV_01", [c.id for c in res_c_missing.selected_cards])
+        for anchor in (
+            {"kind": "leading_line"},
+            {"kind": "leading_line", "points": [[0.2, 0.3], [0.2, 0.3]]},
+            {"kind": "landmark", "bbox": [0.2, 0.3, 0.6, 0.7]},
+        ):
+            with self.subTest(anchor=anchor):
+                result = retriever.retrieve({**obs_coast_no_line, "anchors": [anchor]}, rt)
+                self.assertNotIn("COAST_LINE_ENV_01", [c.id for c in result.selected_cards])
+
+        bbox_only = {"kind": "leading_line", "bbox": [0.2, 0.3, 0.6, 0.7]}
+        result = retriever.retrieve({**obs_coast_no_line, "anchors": [bbox_only]}, rt)
+        self.assertIn("COAST_LINE_ENV_01", [c.id for c in result.selected_cards])
 
 
 if __name__ == "__main__":
