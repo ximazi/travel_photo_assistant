@@ -505,26 +505,31 @@ class BusinessRuleValidator:
 
             # Movement constraint checks (Rule III.8)
             mc = runtime_input.movement_constraints
-            if op == "physical_translate" and actor == "photographer":
-                if mc.photographer_translation in {"forbidden", "tripod_fixed"}:
-                    result.add_error(
-                        "PHOTOGRAPHER_TRANSLATION_FORBIDDEN",
-                        f"Photographer translation is '{mc.photographer_translation}' but action requests physical_translate.",
-                        f"actions[{idx}]",
-                    )
-                elif mc.photographer_translation == "unknown":
-                    if aid == active_action_id:
+            if op == "physical_translate":
+                if actor == "photographer":
+                    if mc.photographer_translation in {"forbidden", "tripod_fixed"}:
                         result.add_error(
-                            "UNCONFIRMED_MOVEMENT_SPACE_ACTIVE",
-                            "Cannot activate photographer physical_translate while photographer_translation is unknown; confirm movement space first.",
+                            "PHOTOGRAPHER_TRANSLATION_FORBIDDEN",
+                            f"Photographer translation is '{mc.photographer_translation}' but action requests physical_translate.",
                             f"actions[{idx}]",
                         )
-
-            if op == "physical_translate" and actor == "subject":
-                if mc.subject_translation in {"forbidden", "not_requested"} and not runtime_input.user_goal.allow_subject_walking:
+                    elif mc.photographer_translation != "allowed":
+                        result.add_error(
+                            "UNCONFIRMED_MOVEMENT_SPACE_ACTIVE",
+                            "Photographer translation may not be active or queued until safe movement is confirmed in a new request.",
+                            f"actions[{idx}]",
+                        )
+                elif actor == "subject":
+                    if mc.subject_translation != "allowed" or runtime_input.user_goal.allow_subject_walking is not True:
+                        result.add_error(
+                            "SUBJECT_TRANSLATION_DISALLOWED",
+                            "Subject translation needs an explicitly allowed movement space and user walking opt-in.",
+                            f"actions[{idx}]",
+                        )
+                else:
                     result.add_error(
-                        "SUBJECT_TRANSLATION_DISALLOWED",
-                        f"Subject translation is '{mc.subject_translation}' and allow_subject_walking=false.",
+                        "INVALID_TRANSLATION_ACTOR",
+                        "Only the photographer or the subject can physically translate.",
                         f"actions[{idx}]",
                     )
 

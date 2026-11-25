@@ -143,7 +143,7 @@ class UserGoal:
             subject_id=data.get("subject_id"),
             subject_count=data.get("subject_count"),
             orientation_preference=data.get("orientation_preference", "portrait"),
-            allow_subject_walking=bool(data.get("allow_subject_walking", False)),
+            allow_subject_walking=data.get("allow_subject_walking") is True,
             allow_precomposition=bool(data.get("allow_precomposition", False)),
             goal_tags=list(data.get("goal_tags", [])),
             goal_version=int(data.get("goal_version", 1)),

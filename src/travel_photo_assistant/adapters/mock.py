@@ -590,7 +590,7 @@ class RuleBasedOfflineVisionAdapter(VisionModelAdapter):
                         },
                     }
                 )
-            elif mc.subject_translation == "allowed":
+            elif mc.subject_translation == "allowed" and runtime_input.user_goal.allow_subject_walking:
                 actions.append(
                     {
                         "action_id": "a1",
