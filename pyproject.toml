@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "travel-photo-assistant"
+version = "0.1.0"
+description = "Travel Photo Assistant v0.1: Scene observation, shot planning, business rule validation, coordinate mapping, and dual-loop runtime engine."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "jsonschema>=4.20.0",
+]
+
+[project.optional-dependencies]
+api = [
+    "fastapi>=0.92.0",
+    "uvicorn>=0.17.6",
+]
+render = [
+    "pillow>=10.0.0",
+]
+
+[project.scripts]
+travel-photo-assistant = "travel_photo_assistant.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

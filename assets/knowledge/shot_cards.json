@@ -1,0 +1,498 @@
+{
+  "schema_version": "0.1.0",
+  "status": "draft_unvalidated",
+  "focal_length_hint_notice": "所有焦距均指35mm等效视角的可选起点，仅在设备与空间支持时考虑；不是从图像测得的值。",
+  "cards": [
+    {
+      "version": "0.1.0",
+      "status": "authored_unvalidated",
+      "source": "本方案原创设计，尚待实拍评价；不是来自模型实测的经验结论。",
+      "id": "COAST_LINE_ENV_01",
+      "title": "岸线引导的环境人像",
+      "scene_tags": [
+        "coast",
+        "lake"
+      ],
+      "goal_tags": [
+        "person_environment_balance",
+        "natural"
+      ],
+      "required_visual_tags": [
+        "single_person",
+        "leading_line"
+      ],
+      "visual_requirements": [
+        "当前画面有可辨认的岸线或栈道延伸关系",
+        "人物与环境均为本次拍摄目标"
+      ],
+      "not_applicable_when": [
+        "用户只要脸部特写",
+        "岸线实际被游客或杂物遮挡，无法形成有意义结构"
+      ],
+      "movement_requirements": "主方案允许原地转动取景和原地姿态；不要求沿岸行走。",
+      "device_requirements": [
+        "至少一个能同时容纳人物与环境的可用视角"
+      ],
+      "composition_intent": "根据当前岸线与留白选择人物在左侧或右侧，保留岸线进入画面的关系。具体位置由当前帧决定。",
+      "subject_height_ratio_hint": [
+        0.4,
+        0.65
+      ],
+      "lens_intent": "广角至标准视角；先保持当前可用镜头，按人物占比验证。",
+      "focal_length_35mm_eq_hint": [
+        24,
+        40
+      ],
+      "pose_options": [
+        "自然站立，身体轻轻侧转",
+        "双脚原地，视线看向镜头或画面留白方向"
+      ],
+      "action_templates": [
+        "拍摄者原地重新取景，将人物与岸线安排到目标区域",
+        "构图确认后，给人物一个简单的原地姿态动作"
+      ],
+      "verification_checks": [
+        "人物景别符合目标",
+        "岸线仍然可辨且未被主体完全挡住",
+        "画面边缘没有意外切脚或新杂物"
+      ],
+      "positive_case": "柔光海岸，单人全身，左侧岸线有纵深。",
+      "negative_case": "海边标签相同，但目标侧全是游客，没有可用岸线。"
+    },
+    {
+      "version": "0.1.0",
+      "status": "authored_unvalidated",
+      "source": "本方案原创设计，尚待实拍评价；不是来自模型实测的经验结论。",
+      "id": "COAST_BUSY_TIGHTER_02",
+      "title": "游客较多时缩小环境范围",
+      "scene_tags": [
+        "coast",
+        "lake"
+      ],
+      "goal_tags": [
+        "person_first",
+        "natural"
+      ],
+      "required_visual_tags": [
+        "single_person",
+        "background_clutter"
+      ],
+      "visual_requirements": [
+        "背景存在实际可见的游客或杂物",
+        "当前画面内有可利用的较干净背景片区"
+      ],
+      "not_applicable_when": [
+        "用户强调完整地标与场景",
+        "更紧景别仍会保留同一遮挡",
+        "可用画质不足以支持裁切"
+      ],
+      "movement_requirements": "先评估原地取景；如需真实换位，先确认空间。",
+      "device_requirements": [
+        "能够实现目标景别的可用镜头或可接受裁切"
+      ],
+      "composition_intent": "以半身或较紧全身突出人物，保留少量海面作为地点线索。",
+      "subject_height_ratio_hint": [
+        0.6,
+        0.85
+      ],
+      "lens_intent": "可用标准至中长焦视角，须考虑光照、设备质量和取景空间。",
+      "focal_length_35mm_eq_hint": [
+        40,
+        85
+      ],
+      "pose_options": [
+        "身体略侧，脸部看向镜头",
+        "手部自然落在身体附近，不强制遮挡背景"
+      ],
+      "action_templates": [
+        "选择当前画面内可见的干净背景关系",
+        "切镜头后重新采帧并规划，不能沿用旧目标框"
+      ],
+      "verification_checks": [
+        "杂物确实减少",
+        "人物清晰且没有失去用户要求的旅行信息"
+      ],
+      "positive_case": "主角后方一小片海面干净，周边拥挤，用户希望人物突出。",
+      "negative_case": "人物头部与路牌同视线重合，仅放大仍然重合。"
+    },
+    {
+      "version": "0.1.0",
+      "status": "authored_unvalidated",
+      "source": "本方案原创设计，尚待实拍评价；不是来自模型实测的经验结论。",
+      "id": "FOREST_PATH_DEPTH_03",
+      "title": "林间小径的纵深人像",
+      "scene_tags": [
+        "forest",
+        "park",
+        "mountain_trail"
+      ],
+      "goal_tags": [
+        "person_environment_balance",
+        "quiet"
+      ],
+      "required_visual_tags": [
+        "single_person",
+        "leading_line"
+      ],
+      "visual_requirements": [
+        "当前画面中有可辨认的小径或林间线条",
+        "人物轮廓能与背景分离"
+      ],
+      "not_applicable_when": [
+        "路径方向不能看清",
+        "人物太暗或被遮挡，导致本次脸部可辨目标无法满足"
+      ],
+      "movement_requirements": "默认静态站姿；行走仅在路径与动作经用户确认后启用。",
+      "device_requirements": [
+        "视角能保留人物与小径纵深"
+      ],
+      "composition_intent": "利用路径延伸，人物可居中或偏侧，取决于路径对称性与背景干扰。",
+      "subject_height_ratio_hint": [
+        0.45,
+        0.7
+      ],
+      "lens_intent": "能保留路径的广角至标准视角。",
+      "focal_length_35mm_eq_hint": [
+        24,
+        50
+      ],
+      "pose_options": [
+        "身体沿路径略侧，脸回看镜头",
+        "原地轻微调整重心"
+      ],
+      "action_templates": [
+        "先安排路径与人物关系",
+        "逐一检查头后树干，再给姿态指令"
+      ],
+      "verification_checks": [
+        "路径延伸仍可辨",
+        "人物头部没有明显树干重合",
+        "脸部可辨"
+      ],
+      "positive_case": "林间路径清楚，柔光，主角与背景层次分明。",
+      "negative_case": "树林标签正确但没有可用路径，硬套中央引导线。"
+    },
+    {
+      "version": "0.1.0",
+      "status": "authored_unvalidated",
+      "source": "本方案原创设计，尚待实拍评价；不是来自模型实测的经验结论。",
+      "id": "FOREST_DAPPLED_LIGHT_04",
+      "title": "先处理脸部斑驳光",
+      "scene_tags": [
+        "forest",
+        "park"
+      ],
+      "goal_tags": [
+        "person_first",
+        "person_environment_balance"
+      ],
+      "required_visual_tags": [
+        "single_person",
+        "dappled_face_light"
+      ],
+      "visual_requirements": [
+        "脸部存在实际可见的强烈光斑或不均匀阴影"
+      ],
+      "not_applicable_when": [
+        "用户明确追求斑驳光效果",
+        "低分辨率下无法判断脸部亮暗"
+      ],
+      "movement_requirements": "如需进入附近均匀光照区，必须先看见该区域并确认可到达；未知时先补拍环境。",
+      "device_requirements": [
+        "不依赖可变光圈或外接灯具"
+      ],
+      "composition_intent": "先让脸部光线符合目标，再微调构图。",
+      "subject_height_ratio_hint": null,
+      "lens_intent": "先保持当前镜头观察光线变化。",
+      "focal_length_35mm_eq_hint": null,
+      "pose_options": [
+        "轻微调整头部朝向后观察阴影变化",
+        "站位不便时选更适合当前光线的姿态"
+      ],
+      "action_templates": [
+        "指出具体脸部明暗问题",
+        "有条件地调整朝向或移动到已确认的均匀光区域"
+      ],
+      "verification_checks": [
+        "脸部光斑是否减少",
+        "改变朝向后五官可辨程度是否提升",
+        "高光与阴影没有比原来更差"
+      ],
+      "positive_case": "脸上有强亮斑，附近已确认存在均匀阴影区域。",
+      "negative_case": "仅看到树林就假设存在树荫或命令人走入画外区域。"
+    },
+    {
+      "version": "0.1.0",
+      "status": "authored_unvalidated",
+      "source": "本方案原创设计，尚待实拍评价；不是来自模型实测的经验结论。",
+      "id": "STREET_DEPTH_05",
+      "title": "街道纵深与自然站姿",
+      "scene_tags": [
+        "city_street",
+        "old_town",
+        "pedestrian_street"
+      ],
+      "goal_tags": [
+        "person_environment_balance",
+        "street_style"
+      ],
+      "required_visual_tags": [
+        "single_person",
+        "leading_line"
+      ],
+      "visual_requirements": [
+        "建筑边缘或步行街形成可辨认的延伸结构",
+        "用户希望保留城市环境"
+      ],
+      "not_applicable_when": [
+        "取景结构主要是对称门洞且更适合居中",
+        "用户只要脸部特写",
+        "背景与主体重叠问题尚未解决"
+      ],
+      "movement_requirements": "默认原地站姿；不因街道标签要求走入车行区域。",
+      "device_requirements": [
+        "能保留城市线条的可用镜头"
+      ],
+      "composition_intent": "让人物与建筑纵深形成关系，避免脸部贴近强烈拉伸的画面边缘。",
+      "subject_height_ratio_hint": [
+        0.5,
+        0.75
+      ],
+      "lens_intent": "广角至标准视角，依现场距离与画幅调整。",
+      "focal_length_35mm_eq_hint": [
+        28,
+        50
+      ],
+      "pose_options": [
+        "身体略沿街道方向，脸回看镜头",
+        "重心放在一条腿，另一只脚轻点地面"
+      ],
+      "action_templates": [
+        "先保留建筑延伸关系与人物",
+        "构图固定后给原地姿态动作"
+      ],
+      "verification_checks": [
+        "城市环境有辨识度",
+        "背景线条未干扰头部",
+        "姿态自然且人物完整"
+      ],
+      "positive_case": "步行街建筑形成纵深，人物可在原地完成静态姿态。",
+      "negative_case": "车流道路被误认为拍摄舞台，要求到路中央行走。"
+    },
+    {
+      "version": "0.1.0",
+      "status": "authored_unvalidated",
+      "source": "本方案原创设计，尚待实拍评价；不是来自模型实测的经验结论。",
+      "id": "HEAD_BACKGROUND_MERGE_06",
+      "title": "分开头部与杆状背景",
+      "scene_tags": [
+        "city_street",
+        "forest",
+        "park",
+        "coast"
+      ],
+      "goal_tags": [
+        "person_first",
+        "person_environment_balance"
+      ],
+      "required_visual_tags": [
+        "single_person",
+        "head_background_merge"
+      ],
+      "visual_requirements": [
+        "当前帧确实存在头部与电线杆、路牌或树干的视觉重合"
+      ],
+      "not_applicable_when": [
+        "重合是用户刻意追求的效果",
+        "目标物体无法辨认",
+        "人物或摄影师不能移动且无法改变相对关系"
+      ],
+      "movement_requirements": "必须确认至少一方允许小幅真实平移；仅原地转手机不足以解决同视线重合。",
+      "device_requirements": [
+        "无需指定焦距"
+      ],
+      "composition_intent": "优先分开头部轮廓与背景干扰，再恢复整体构图。",
+      "subject_height_ratio_hint": null,
+      "lens_intent": "固定当前镜头以便比较动作效果。",
+      "focal_length_35mm_eq_hint": null,
+      "pose_options": [
+        "人物在允许范围内小幅横移",
+        "人物保持原位，由拍摄者小幅平移机位"
+      ],
+      "action_templates": [
+        "一次只移动一方，小幅试探",
+        "观察头部与背景间隙，改善后停止；不改善时重新分析"
+      ],
+      "verification_checks": [
+        "头部轮廓与目标障碍分离",
+        "没有产生新的遮挡或出框",
+        "人物与环境关系仍符合目标"
+      ],
+      "positive_case": "人行区域已确认，人物允许小幅横移，头部与路牌重合。",
+      "negative_case": "仅转动手机或同机位放大，误称能分开同视线上的树干。"
+    },
+    {
+      "version": "0.1.0",
+      "status": "authored_unvalidated",
+      "source": "本方案原创设计，尚待实拍评价；不是来自模型实测的经验结论。",
+      "id": "ARCH_SYMMETRY_07",
+      "title": "利用建筑对称关系",
+      "scene_tags": [
+        "architecture",
+        "old_town",
+        "city_street"
+      ],
+      "goal_tags": [
+        "person_environment_balance",
+        "formal"
+      ],
+      "required_visual_tags": [
+        "single_person",
+        "symmetry"
+      ],
+      "visual_requirements": [
+        "门、廊、台阶或建筑在当前视角具有明确对称关系"
+      ],
+      "not_applicable_when": [
+        "场景实际上不对称",
+        "居中后遮挡用户想保留的核心地标",
+        "建筑中轴位置不能站立或不能取景"
+      ],
+      "movement_requirements": "优先原地取景；需要站到中轴区域时确认可进入。",
+      "device_requirements": [
+        "能容纳目标建筑关系的镜头"
+      ],
+      "composition_intent": "合理保留居中构图；以对称结构组织人物位置，不机械改成三分法。",
+      "subject_height_ratio_hint": [
+        0.4,
+        0.7
+      ],
+      "lens_intent": "根据建筑范围和人物比例选择可用视角。",
+      "focal_length_35mm_eq_hint": [
+        24,
+        50
+      ],
+      "pose_options": [
+        "自然稳定的站姿",
+        "小幅侧身保持身体层次"
+      ],
+      "action_templates": [
+        "校准画面水平与对称关系",
+        "人物已处于合理中轴时保持位置"
+      ],
+      "verification_checks": [
+        "对称关系明确",
+        "没有切掉关键建筑部分",
+        "人物比例符合目标"
+      ],
+      "positive_case": "人物自然站在对称拱门中间，画面已有平衡感。",
+      "negative_case": "无理由让人物偏到三分线上，破坏现有结构。"
+    },
+    {
+      "version": "0.1.0",
+      "status": "authored_unvalidated",
+      "source": "本方案原创设计，尚待实拍评价；不是来自模型实测的经验结论。",
+      "id": "LANDMARK_SCALE_08",
+      "title": "人物与远处地标的比例",
+      "scene_tags": [
+        "mountain",
+        "architecture",
+        "city_view",
+        "coast"
+      ],
+      "goal_tags": [
+        "landmark_and_person",
+        "person_environment_balance"
+      ],
+      "required_visual_tags": [
+        "single_person",
+        "landmark"
+      ],
+      "visual_requirements": [
+        "可辨认值得保留的山峰或建筑",
+        "用户希望同时突出人物和地标"
+      ],
+      "not_applicable_when": [
+        "地标不在画面中且不能补充观察",
+        "可移动空间未知却要求大幅后退",
+        "仅变焦会裁掉人物或地标"
+      ],
+      "movement_requirements": "如需改变人物与远景的相对大小，须在允许空间内调整拍摄位置，并重新观察。",
+      "device_requirements": [
+        "视角候选必须来自可用镜头"
+      ],
+      "composition_intent": "联合选择机位和视角，使人物与远景比例符合用户目标；不承诺单纯换镜头改变透视。",
+      "subject_height_ratio_hint": null,
+      "lens_intent": "中长焦视角是候选，是否采用取决于允许的拍摄位置与画面。",
+      "focal_length_35mm_eq_hint": [
+        50,
+        100
+      ],
+      "pose_options": [
+        "简单站姿，避免遮挡地标关键轮廓"
+      ],
+      "action_templates": [
+        "先确认人物与地标当前大小关系",
+        "改变位置后重新采帧，再选择视角和人物框"
+      ],
+      "verification_checks": [
+        "人物和地标均保留",
+        "相对比例朝目标改善",
+        "设备和空间条件均满足"
+      ],
+      "positive_case": "可见山峰，允许更换机位，用户希望山峰在人物身后更突出。",
+      "negative_case": "在同一机位只裁切放大，就宣称山峰相对人物变大。"
+    },
+    {
+      "version": "0.1.0",
+      "status": "authored_unvalidated",
+      "source": "本方案原创设计，尚待实拍评价；不是来自模型实测的经验结论。",
+      "id": "LOW_LIGHT_STATIC_09",
+      "title": "弱光中降低动作复杂度",
+      "scene_tags": [
+        "night_street",
+        "indoor",
+        "city_street"
+      ],
+      "goal_tags": [
+        "person_first",
+        "night_atmosphere"
+      ],
+      "required_visual_tags": [
+        "single_person",
+        "low_light"
+      ],
+      "visual_requirements": [
+        "弱光或运动模糊迹象实际可见"
+      ],
+      "not_applicable_when": [
+        "用户明确要运动拖影且设备支持",
+        "画面曝光良好且动作无需改变"
+      ],
+      "movement_requirements": "默认稳定原地姿态；不要在看不清场地时要求复杂移动。",
+      "device_requirements": [
+        "基于设备实测选择画质可用镜头；不假定最高倍率最好"
+      ],
+      "composition_intent": "先获得人物可辨与稳定画面，再保留夜景氛围。",
+      "subject_height_ratio_hint": null,
+      "lens_intent": "选择当前光线下可靠的可用镜头；需要设备评测而非单靠倍率推断。",
+      "focal_length_35mm_eq_hint": null,
+      "pose_options": [
+        "舒适静态站姿",
+        "保持脸部方向和身体稳定"
+      ],
+      "action_templates": [
+        "给出单一稳定动作",
+        "复核人物清晰度，之后决定曝光或机位调整"
+      ],
+      "verification_checks": [
+        "人物是否清晰可辨",
+        "暗部或高光是否保留所需内容",
+        "动作指导未增加模糊"
+      ],
+      "positive_case": "夜街已有轻微动作模糊，可通过简化动作改善。",
+      "negative_case": "不知道快门和设备能力，却要求跳跃并给出固定曝光三参数。"
+    }
+  ]
+}
+

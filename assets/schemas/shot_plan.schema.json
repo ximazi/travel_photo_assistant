@@ -1,0 +1,544 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:travel-photo-assistant:shot-plan:0.1.0",
+  "title": "Shot plan: application validation contract",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "frame_id": {
+      "type": "string"
+    },
+    "scene_version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "plan_id": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "plan_ready",
+        "need_more_view",
+        "no_subject",
+        "hold",
+        "insufficient_input"
+      ]
+    },
+    "coordinate_space": {
+      "const": "upright_input_normalized_unmirrored"
+    },
+    "goal": {
+      "type": "string"
+    },
+    "scene_summary": {
+      "type": "string"
+    },
+    "subject_placement_guide": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "bbox": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "minItems": 4,
+              "maxItems": 4,
+              "description": "[xmin,ymin,xmax,ymax] in upright unmirrored input. Backend must additionally validate xmin<xmax and ymin<ymax."
+            },
+            "framing": {
+              "enum": [
+                "full_body",
+                "three_quarter",
+                "half_body",
+                "headshot"
+              ],
+              "description": "虚框覆盖的身体范围：全身 / 膝盖以上 / 腰部以上 / 头肩。决定人形轮廓的画法。"
+            },
+            "target_height_ratio": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "instruction": {
+              "type": "string"
+            },
+            "basis": {
+              "enum": [
+                "rule_of_thirds",
+                "centered_symmetry",
+                "leading_line_anchor",
+                "open_area"
+              ]
+            },
+            "fact_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "bbox",
+            "framing",
+            "target_height_ratio",
+            "instruction",
+            "basis",
+            "fact_ids"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "crop_recommendation": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "crop_rect": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "minItems": 4,
+              "maxItems": 4,
+              "description": "[xmin,ymin,xmax,ymax] in upright unmirrored input. The region that should be kept."
+            },
+            "aspect_ratio": {
+              "enum": [
+                "1:1",
+                "3:2",
+                "2:3",
+                "4:3",
+                "3:4",
+                "4:5",
+                "16:9",
+                "9:16"
+              ]
+            },
+            "rationale": {
+              "type": "string"
+            },
+            "scene_basis": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "focus_anchor_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "crop_rect",
+            "aspect_ratio",
+            "rationale",
+            "scene_basis",
+            "focus_anchor_ids"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "primary_plan": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "used_fact_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "used_card_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "composition": {
+              "type": "object",
+              "properties": {
+                "orientation": {
+                  "enum": [
+                    "portrait",
+                    "landscape",
+                    "keep"
+                  ]
+                },
+                "shot_size": {
+                  "enum": [
+                    "environmental_full_body",
+                    "full_body",
+                    "three_quarter",
+                    "half_body",
+                    "headshot",
+                    "keep"
+                  ]
+                },
+                "target_subject_bbox": {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "minItems": 4,
+                      "maxItems": 4,
+                      "description": "[xmin,ymin,xmax,ymax] in upright unmirrored input. Backend must additionally validate xmin<xmax and ymin<ymax."
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "target_subject_height_ratio": {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "minItems": 2,
+                      "maxItems": 2
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "preserve_anchor_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "orientation",
+                "shot_size",
+                "target_subject_bbox",
+                "target_subject_height_ratio",
+                "preserve_anchor_ids"
+              ],
+              "additionalProperties": false
+            },
+            "lens": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "enum": [
+                    "keep",
+                    "switch"
+                  ]
+                },
+                "target_lens_id": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ui_label": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "equivalent_focal_length_mm": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "note": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action",
+                "target_lens_id",
+                "ui_label",
+                "equivalent_focal_length_mm",
+                "note"
+              ],
+              "additionalProperties": false
+            },
+            "pose_intent": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "reason",
+            "used_fact_ids",
+            "used_card_ids",
+            "composition",
+            "lens",
+            "pose_intent"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "action_id": {
+            "type": "string"
+          },
+          "actor": {
+            "enum": [
+              "photographer",
+              "subject",
+              "camera"
+            ]
+          },
+          "operation": {
+            "enum": [
+              "reframe_pan",
+              "reframe_tilt",
+              "level_camera",
+              "physical_translate",
+              "raise_lower_camera",
+              "change_lens",
+              "change_zoom",
+              "rotate_body",
+              "head_gaze",
+              "pose_in_place",
+              "exposure_adjust",
+              "hold",
+              "confirm_movement_space",
+              "capture_new_frame",
+              "shoot"
+            ]
+          },
+          "direction_reference": {
+            "enum": [
+              "input_image",
+              "photographer_body",
+              "subject_body",
+              "device_control",
+              "none"
+            ]
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "prerequisites": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence_fact_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "completion_check": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "enum": [
+                  "subject_center_x_in_range",
+                  "subject_height_ratio_in_range",
+                  "head_obstacle_separated",
+                  "pose_visually_confirmed",
+                  "camera_metadata_match",
+                  "fresh_frame_received",
+                  "manual_confirmed",
+                  "none"
+                ]
+              },
+              "target_range": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reference_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "check_by": {
+                "enum": [
+                  "local_vision",
+                  "camera_api",
+                  "vlm_review",
+                  "user"
+                ]
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "target_range",
+              "reference_id",
+              "check_by",
+              "description"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "action_id",
+          "actor",
+          "operation",
+          "direction_reference",
+          "instruction",
+          "prerequisites",
+          "evidence_fact_ids",
+          "completion_check"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 3
+    },
+    "active_action_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "alternative": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "use_when": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "use_when"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "uncertainties": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "invalidation_conditions": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "scene_version_changed",
+          "lens_changed",
+          "crop_changed",
+          "orientation_changed",
+          "selected_subject_changed",
+          "light_materially_changed",
+          "tracking_lost",
+          "user_goal_changed"
+        ]
+      }
+    },
+    "fallback_instruction": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "frame_id",
+    "scene_version",
+    "plan_id",
+    "status",
+    "coordinate_space",
+    "goal",
+    "scene_summary",
+    "subject_placement_guide",
+    "crop_recommendation",
+    "primary_plan",
+    "actions",
+    "active_action_id",
+    "alternative",
+    "uncertainties",
+    "invalidation_conditions",
+    "fallback_instruction"
+  ],
+  "additionalProperties": false
+}
+

@@ -1,0 +1,57 @@
+{
+  "schema_version": "0.1.0",
+  "example_only": true,
+  "notice": "虚构接口测试夹具，没有附真实照片；禁止将此输入作为实拍识别成功的证据。",
+  "frame": {
+    "frame_id": "demo_f001",
+    "scene_version": 1,
+    "image_attachments": [],
+    "upright_input_width_px": 1080,
+    "upright_input_height_px": 1440,
+    "coordinate_space": "upright_input_normalized_unmirrored",
+    "input_rotation_already_applied": true,
+    "preview_mirrored": false,
+    "viewport_fit": "contain",
+    "preview_aspect_ratio": "3:4"
+  },
+  "user_goal": {
+    "priority": "人物自然、脸部可辨，同时保留海岸旅行环境",
+    "style": "自然旅行人像",
+    "subject_id": "person_1",
+    "subject_count": 1,
+    "orientation_preference": "portrait",
+    "allow_subject_walking": false
+  },
+  "camera_capabilities": {
+    "current_lens_id": "demo_main",
+    "available_lenses": [
+      {
+        "lens_id": "demo_main",
+        "ui_label": "1×",
+        "equivalent_focal_length_mm": 26,
+        "equivalent_focal_length_source": "synthetic_fixture",
+        "mode": "optical_primary"
+      },
+      {
+        "lens_id": "demo_ultrawide",
+        "ui_label": "0.5×",
+        "equivalent_focal_length_mm": 13,
+        "equivalent_focal_length_source": "synthetic_fixture",
+        "mode": "optical_ultrawide"
+      }
+    ],
+    "manual_aperture": false,
+    "exposure_compensation_available": true
+  },
+  "movement_constraints": {
+    "photographer_translation": "unknown",
+    "subject_translation": "not_requested",
+    "standing_in_place_confirmed": true
+  },
+  "session": {
+    "previous_plan": null,
+    "active_action": null,
+    "user_requested_new_plan": true
+  }
+}
+

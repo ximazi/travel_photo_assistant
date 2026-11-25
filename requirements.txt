@@ -1,0 +1,6 @@
+jsonschema>=4.20.0
+# Optional for HTTP API server:
+fastapi>=0.92.0
+uvicorn>=0.17.6
+# Optional for rendering annotated result images (run-photo / /v1/photos/run):
+pillow>=10.0.0

@@ -1,0 +1,333 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:travel-photo-assistant:scene-observation:0.1.0",
+  "title": "Scene observation: application validation contract",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "frame_id": {
+      "type": "string"
+    },
+    "scene_version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "coordinate_space": {
+      "const": "upright_input_normalized_unmirrored"
+    },
+    "status": {
+      "enum": [
+        "observed",
+        "insufficient_input",
+        "needs_subject_selection"
+      ]
+    },
+    "scene_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "fact_id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "scene",
+              "subject",
+              "geometry",
+              "light",
+              "constraint"
+            ]
+          },
+          "statement": {
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "vlm_visual",
+              "local_vision",
+              "device_metadata",
+              "user_input",
+              "synthetic_fixture"
+            ]
+          },
+          "strength": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "minItems": 4,
+                "maxItems": 4,
+                "description": "[xmin,ymin,xmax,ymax] in upright unmirrored input. Backend must additionally validate xmin<xmax and ymin<ymax."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "fact_id",
+          "kind",
+          "statement",
+          "source",
+          "strength",
+          "region"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "selected_subject": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "subject_id": {
+              "type": "string"
+            },
+            "bbox": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "minItems": 4,
+                  "maxItems": 4,
+                  "description": "[xmin,ymin,xmax,ymax] in upright unmirrored input. Backend must additionally validate xmin<xmax and ymin<ymax."
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "full_body_visible": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "face_visibility": {
+              "enum": [
+                "visible",
+                "occluded",
+                "too_small",
+                "unknown"
+              ]
+            },
+            "pose_description": {
+              "type": "string"
+            },
+            "fact_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "subject_id",
+            "bbox",
+            "full_body_visible",
+            "face_visibility",
+            "pose_description",
+            "fact_ids"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "anchors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "anchor_id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "horizon",
+              "leading_line",
+              "frame",
+              "landmark",
+              "clean_background",
+              "possible_ground",
+              "obstacle"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "bbox": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "minItems": 4,
+                "maxItems": 4,
+                "description": "[xmin,ymin,xmax,ymax] in upright unmirrored input. Backend must additionally validate xmin<xmax and ymin<ymax."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "fact_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "anchor_id",
+          "kind",
+          "description",
+          "bbox",
+          "points",
+          "fact_ids"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "light": {
+      "type": "object",
+      "properties": {
+        "appearance": {
+          "type": "string"
+        },
+        "direction_estimate": {
+          "enum": [
+            "front",
+            "side",
+            "back",
+            "diffuse",
+            "unknown"
+          ]
+        },
+        "strength": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "fact_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "appearance",
+        "direction_estimate",
+        "strength",
+        "fact_ids"
+      ],
+      "additionalProperties": false
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "issue_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "priority": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "fact_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "issue_id",
+          "description",
+          "priority",
+          "fact_ids"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "frame_id",
+    "scene_version",
+    "coordinate_space",
+    "status",
+    "scene_tags",
+    "facts",
+    "selected_subject",
+    "anchors",
+    "light",
+    "issues",
+    "unknowns"
+  ],
+  "additionalProperties": false
+}
+

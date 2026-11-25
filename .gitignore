@@ -1,0 +1,23 @@
+# 密钥与本地环境
+.env
+.env.local
+
+# 运行输出目录（渲染结果图 / JSON 报告）
+output/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# 编辑器
+.idea/
+.vscode/
+
+# 测试缓存
+.pytest_cache/

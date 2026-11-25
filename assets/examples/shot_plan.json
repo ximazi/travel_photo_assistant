@@ -1,0 +1,124 @@
+{
+  "schema_version": "0.1.0",
+  "frame_id": "demo_f001",
+  "scene_version": 1,
+  "plan_id": "demo_plan_001",
+  "status": "plan_ready",
+  "coordinate_space": "upright_input_normalized_unmirrored",
+  "goal": "示例：自然旅行人像，人物与海岸环境并重。",
+  "scene_summary": "虚构示例：海边、柔光、单人全身、左侧岸线具有延伸关系。",
+  "subject_placement_guide": null,
+  "crop_recommendation": null,
+  "primary_plan": {
+    "title": "示例方案：右侧人物与左侧岸线",
+    "reason": "在假设画面中保留岸线延伸关系，并让人物与环境形成视觉平衡；坐标是待验证的构图目标。",
+    "used_fact_ids": [
+      "f1",
+      "f2",
+      "f3",
+      "f4",
+      "f5"
+    ],
+    "used_card_ids": [
+      "COAST_LINE_ENV_01"
+    ],
+    "composition": {
+      "orientation": "portrait",
+      "shot_size": "environmental_full_body",
+      "target_subject_bbox": [
+        0.53,
+        0.32,
+        0.77,
+        0.9
+      ],
+      "target_subject_height_ratio": [
+        0.52,
+        0.64
+      ],
+      "preserve_anchor_ids": [
+        "coast_curve",
+        "horizon"
+      ]
+    },
+    "lens": {
+      "action": "keep",
+      "target_lens_id": "demo_main",
+      "ui_label": "1×",
+      "equivalent_focal_length_mm": 26,
+      "note": "数值来自虚构设备夹具，非从图像推算。保持当前镜头，轻微重新取景后检查岸线与边缘。"
+    },
+    "pose_intent": "全身自然站立，身体略侧；手臂保持舒适，避免复杂姿势。"
+  },
+  "actions": [
+    {
+      "action_id": "a1",
+      "actor": "photographer",
+      "operation": "reframe_pan",
+      "direction_reference": "input_image",
+      "instruction": "保持原地和当前镜头，向画面左侧缓慢转动手机，让人物中心进入右侧目标区。",
+      "prerequisites": [
+        "示例所述画面真实存在",
+        "人物已选定且跟踪有效"
+      ],
+      "evidence_fact_ids": [
+        "f1",
+        "f2",
+        "f5"
+      ],
+      "completion_check": {
+        "type": "subject_center_x_in_range",
+        "target_range": [
+          0.6,
+          0.7
+        ],
+        "reference_id": "person_1",
+        "check_by": "local_vision",
+        "description": "人物中心进入目标区后停止；新画面仍须检查全身、岸线及新进入的杂物。"
+      }
+    },
+    {
+      "action_id": "a2",
+      "actor": "subject",
+      "operation": "rotate_body",
+      "direction_reference": "none",
+      "instruction": "双脚留在原地，身体轻轻侧转到舒服的角度。",
+      "prerequisites": [
+        "a1已完成并经新帧复核",
+        "当前站姿稳定"
+      ],
+      "evidence_fact_ids": [
+        "f2",
+        "f5"
+      ],
+      "completion_check": {
+        "type": "pose_visually_confirmed",
+        "target_range": null,
+        "reference_id": "person_1",
+        "check_by": "vlm_review",
+        "description": "新画面复核自然姿态与脸部可辨，不要求精确角度。"
+      }
+    }
+  ],
+  "active_action_id": "a1",
+  "alternative": {
+    "title": "人物占比更大的海边人像",
+    "use_when": "用户改为更重视脸部，或重新取景后出现明显背景杂物时，重新选择景别。"
+  },
+  "uncertainties": [
+    "所有输入均为虚构接口示例",
+    "重新取景后进入画面的区域尚未观察",
+    "未测量人物绝对距离"
+  ],
+  "invalidation_conditions": [
+    "scene_version_changed",
+    "lens_changed",
+    "crop_changed",
+    "orientation_changed",
+    "selected_subject_changed",
+    "light_materially_changed",
+    "tracking_lost",
+    "user_goal_changed"
+  ],
+  "fallback_instruction": "真实接入前先提供一帧实际照片；实拍时若人物跟踪失败，暂停位置箭头并重新获取画面。"
+}
+

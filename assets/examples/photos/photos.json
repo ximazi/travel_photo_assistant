@@ -1,0 +1,188 @@
+{
+  "schema_version": "0.1.0",
+  "status": "hand_authored_hints",
+  "note": [
+    "这是给离线规则适配器用的观察提示清单，不是模型输出，也不是实拍识别结果。",
+    "bbox 为人工目测估计值，误差可达 5-10%，用于跑通坐标链路。",
+    "真实视觉准确率必须用真实 VLM + 真实照片重新评测。",
+    "新增照片：把文件名加进来并填好字段即可，不需要改 Python 代码。"
+  ],
+  "supported_hint_fields": [
+    "scene_tags", "scene_description", "detected_person_count", "subject_bbox",
+    "subject_id", "anchors", "issues", "light_appearance", "light_direction",
+    "goal_tags", "priority"
+  ],
+  "photos": {
+    "coast_person.jpg": {
+      "scene_tags": ["coast", "leading_line", "clean_background"],
+      "scene_description": "合成图：海边场景，左侧可见弯曲海岸线，人物站在开阔前景。",
+      "detected_person_count": 1,
+      "subject_bbox": [0.31, 0.32, 0.51, 0.86],
+      "anchors": [
+        {
+          "anchor_id": "coast_curve",
+          "kind": "leading_line",
+          "description": "左下向中部延伸的海岸曲线",
+          "bbox": [0.02, 0.46, 0.47, 0.96],
+          "points": [[0.03, 0.94], [0.18, 0.72], [0.45, 0.49]]
+        }
+      ]
+    },
+    "forest_path.jpg": {
+      "scene_tags": ["forest", "leading_line", "dappled_face_light"],
+      "scene_description": "合成图：林间小径向画面深处延伸，人物站在路面中央，地面有斑驳光影。",
+      "detected_person_count": 1,
+      "subject_bbox": [0.45, 0.43, 0.55, 0.92],
+      "anchors": [
+        {
+          "anchor_id": "path_depth",
+          "kind": "leading_line",
+          "description": "小径两侧树干形成的纵深引导线",
+          "bbox": [0.05, 0.36, 0.95, 0.98],
+          "points": [[0.50, 0.37], [0.50, 0.98]]
+        }
+      ]
+    },
+    "city_street_pole.jpg": {
+      "scene_tags": ["city_street", "clean_background"],
+      "scene_description": "合成图：街道场景，人物右侧有一根深色竖直杆状物。",
+      "detected_person_count": 1,
+      "subject_bbox": [0.33, 0.38, 0.47, 0.94],
+      "issues": [
+        {"issue_id": "i1", "description": "人物头部与背景竖直杆状物接近重合", "priority": "high"}
+      ]
+    },
+    "arch_symmetry.jpg": {
+      "scene_tags": ["architecture", "symmetry"],
+      "scene_description": "合成图：拱形建筑中轴构图，天空从拱洞透出。",
+      "detected_person_count": 1,
+      "subject_bbox": [0.44, 0.42, 0.56, 0.92],
+      "anchors": [
+        {
+          "anchor_id": "arch_axis",
+          "kind": "frame",
+          "description": "对称拱门中轴",
+          "bbox": [0.28, 0.23, 0.72, 0.56],
+          "points": [[0.50, 0.23], [0.50, 0.56]]
+        }
+      ]
+    },
+    "low_light.jpg": {
+      "scene_tags": ["night_street", "low_light"],
+      "scene_description": "合成图：夜间街景，远处有点状灯光，整体偏暗。",
+      "light_appearance": "夜间弱光，远处点状灯光",
+      "detected_person_count": 1,
+      "subject_bbox": [0.38, 0.36, 0.52, 0.90]
+    },
+
+    "1.png": {
+      "scene_tags": ["old_town", "city_street", "leading_line"],
+      "scene_description": "真实照片：京都风格传统町屋小巷，石板路向远处收窄，左侧为木墙与屋檐，右侧有黄黑相间的护栏柱与电线杆。",
+      "detected_person_count": 0,
+      "priority": "保留街道纵深与町屋结构，暂时不需要人物",
+      "anchors": [
+        {
+          "anchor_id": "alley_depth",
+          "kind": "leading_line",
+          "description": "两侧屋檐与石板路形成的纵深引导线",
+          "bbox": [0.10, 0.35, 0.78, 0.98],
+          "points": [[0.44, 0.35], [0.44, 0.98]]
+        },
+        {
+          "anchor_id": "guard_pole",
+          "kind": "obstacle",
+          "description": "右侧黄黑护栏柱",
+          "bbox": [0.82, 0.36, 0.87, 0.80]
+        }
+      ]
+    },
+    "2.png": {
+      "scene_tags": ["old_town", "architecture", "city_street", "leading_line"],
+      "scene_description": "真实照片：五层木塔居中于町屋屋顶之上，前景石板路两侧是传统木造民居与红叶。",
+      "detected_person_count": 0,
+      "priority": "突出建筑与地标，保留街道纵深",
+      "anchors": [
+        {
+          "anchor_id": "pagoda",
+          "kind": "landmark",
+          "description": "画面中轴上的五层木塔",
+          "bbox": [0.22, 0.08, 0.53, 0.42]
+        },
+        {
+          "anchor_id": "red_leaves",
+          "kind": "landmark",
+          "description": "塔前的红叶",
+          "bbox": [0.33, 0.33, 0.52, 0.52]
+        }
+      ]
+    },
+    "3.png": {
+      "scene_tags": ["mountain", "lake", "city_view"],
+      "scene_description": "真实照片：雪山与高原湖泊，溪流从前景穿过草地流向远山。画面带短视频平台字幕水印。",
+      "detected_person_count": 0,
+      "priority": "突出远处雪山与湖泊层次",
+      "anchors": [
+        {
+          "anchor_id": "snow_peak",
+          "kind": "landmark",
+          "description": "远处雪山顶峰",
+          "bbox": [0.54, 0.20, 0.74, 0.34]
+        },
+        {
+          "anchor_id": "stream_line",
+          "kind": "leading_line",
+          "description": "前景溪流向远山延伸",
+          "bbox": [0.02, 0.48, 0.92, 0.88]
+        }
+      ]
+    },
+    "4.png": {
+      "scene_tags": ["mountain", "city_view"],
+      "scene_description": "真实照片：雪山主峰特写，前景为高原草甸与湖泊。画面带短视频平台字幕水印。",
+      "detected_person_count": 0,
+      "priority": "突出雪山主峰",
+      "anchors": [
+        {
+          "anchor_id": "main_peak",
+          "kind": "landmark",
+          "description": "雪山主峰",
+          "bbox": [0.48, 0.42, 0.70, 0.66]
+        }
+      ]
+    },
+    "5.png": {
+      "scene_tags": ["park", "lake", "clean_background"],
+      "scene_description": "真实照片：开阔草坪与蓝天白云，远处树列成带，画面深处有一个穿红衣的人。",
+      "detected_person_count": 1,
+      "subject_bbox": [0.228, 0.800, 0.236, 0.840],
+      "face_visibility": "too_small",
+      "priority": "人物自然、脸部可辨，同时保留公园环境",
+      "anchors": [
+        {
+          "anchor_id": "tree_line",
+          "kind": "horizon",
+          "description": "远处横向树列形成的分界线",
+          "bbox": [0.00, 0.60, 1.00, 0.80]
+        }
+      ]
+    },
+    "6.png": {
+      "scene_tags": ["city_street", "pedestrian_street", "background_clutter", "leading_line"],
+      "scene_description": "真实照片：香港街道，两侧招牌密集，红色出租车排成一列，斑马线上有行人通行。",
+      "detected_person_count": 2,
+      "subject_id": null,
+      "priority": "人物自然、脸部可辨，同时保留街道环境",
+      "issues": [
+        {"issue_id": "i1", "description": "招牌与车流密集，背景干扰多", "priority": "medium"}
+      ],
+      "anchors": [
+        {
+          "anchor_id": "taxi_line",
+          "kind": "leading_line",
+          "description": "红色出租车队列形成的纵深引导线",
+          "bbox": [0.25, 0.78, 0.85, 1.00]
+        }
+      ]
+    }
+  }
+}

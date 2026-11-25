@@ -1,0 +1,28 @@
+旅行人物摄影助手原型设计参考资料
+查询日期：2026-11-20
+以下资料支持能力边界和底层接口；本包的提示词、方案卡、schema和评测流程属于提出的工程设计，并非这些来源已验证的摄影产品。
+
+1. Gemini Image understanding：图像输入、视觉问答、目标框和坐标。
+https://ai.google.dev/gemini-api/docs/image-understanding
+
+2. Gemini Structured outputs：JSON Schema输出；应用仍须验证字段的语义正确性。
+https://ai.google.dev/gemini-api/docs/structured-output
+
+3. Google Cloud Image understanding：空间定位等局限。
+https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/capabilities/image-understanding
+
+4. Qwen3-VL官方仓库：开源视觉语言模型系列与空间理解能力描述；本包未对其摄影效果作性能保证。
+https://github.com/QwenLM/Qwen3-VL
+
+5. MediaPipe Pose Landmarker：33人体关键点、图像/视频/相机流、归一化坐标与以髋部为原点的世界坐标。
+https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker
+
+6. Android CameraCharacteristics：实际焦距、传感器尺寸与对焦标定等相机能力字段。
+https://developer.android.com/reference/android/hardware/camera2/CameraCharacteristics
+
+7. Apple AVCaptureDevice Zoom：可用变焦范围、虚拟相机切换信息。
+https://developer.apple.com/documentation/avfoundation/capture-device-zoom
+
+8. FUJIFILM Understanding Lens Compression：拍摄距离决定透视关系；焦距与取景范围。
+https://www.fujifilm-x.com/en-gb/learning-centre/understanding-lens-compression/
+

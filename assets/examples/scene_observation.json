@@ -1,0 +1,146 @@
+{
+  "schema_version": "0.1.0",
+  "frame_id": "demo_f001",
+  "scene_version": 1,
+  "coordinate_space": "upright_input_normalized_unmirrored",
+  "status": "observed",
+  "scene_tags": [
+    "coast",
+    "single_person",
+    "leading_line",
+    "clean_background",
+    "soft_light"
+  ],
+  "facts": [
+    {
+      "fact_id": "f1",
+      "kind": "scene",
+      "statement": "假设：海边场景，左侧可见弯曲海岸线。",
+      "source": "synthetic_fixture",
+      "strength": "high",
+      "region": [
+        0.02,
+        0.46,
+        0.47,
+        0.96
+      ]
+    },
+    {
+      "fact_id": "f2",
+      "kind": "subject",
+      "statement": "假设：选定人物全身入镜，当前人物中心约在画面水平中央。",
+      "source": "synthetic_fixture",
+      "strength": "high",
+      "region": [
+        0.38,
+        0.32,
+        0.62,
+        0.9
+      ]
+    },
+    {
+      "fact_id": "f3",
+      "kind": "geometry",
+      "statement": "假设：海面与天空交界线大致水平，头部未被背景杆状物遮挡。",
+      "source": "synthetic_fixture",
+      "strength": "medium",
+      "region": null
+    },
+    {
+      "fact_id": "f4",
+      "kind": "light",
+      "statement": "假设：脸部可辨，光线较柔和，没有足够证据判断太阳准确方位。",
+      "source": "synthetic_fixture",
+      "strength": "medium",
+      "region": null
+    },
+    {
+      "fact_id": "f5",
+      "kind": "constraint",
+      "statement": "接口假设：允许原地取景和原地姿态变化，未确认可平移空间。",
+      "source": "synthetic_fixture",
+      "strength": "high",
+      "region": null
+    }
+  ],
+  "selected_subject": {
+    "subject_id": "person_1",
+    "bbox": [
+      0.38,
+      0.32,
+      0.62,
+      0.9
+    ],
+    "full_body_visible": true,
+    "face_visibility": "visible",
+    "pose_description": "假设：面对镜头自然站立，双脚完整可见。",
+    "fact_ids": [
+      "f2"
+    ]
+  },
+  "anchors": [
+    {
+      "anchor_id": "coast_curve",
+      "kind": "leading_line",
+      "description": "假设：左下向中部延伸的海岸曲线。",
+      "bbox": [
+        0.02,
+        0.46,
+        0.47,
+        0.96
+      ],
+      "points": [
+        [
+          0.03,
+          0.94
+        ],
+        [
+          0.18,
+          0.72
+        ],
+        [
+          0.45,
+          0.49
+        ]
+      ],
+      "fact_ids": [
+        "f1"
+      ]
+    },
+    {
+      "anchor_id": "horizon",
+      "kind": "horizon",
+      "description": "假设：海平线。",
+      "bbox": null,
+      "points": [
+        [
+          0.02,
+          0.46
+        ],
+        [
+          0.98,
+          0.46
+        ]
+      ],
+      "fact_ids": [
+        "f3"
+      ]
+    }
+  ],
+  "light": {
+    "appearance": "假设：柔光、脸部可辨。",
+    "direction_estimate": "unknown",
+    "strength": "medium",
+    "fact_ids": [
+      "f4"
+    ]
+  },
+  "issues": [],
+  "unknowns": [
+    "真实照片尚未提供",
+    "画外地形与移动空间",
+    "人物距相机的绝对距离",
+    "太阳准确方位"
+  ]
+}
+
