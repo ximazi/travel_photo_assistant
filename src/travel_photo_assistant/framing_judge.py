@@ -65,6 +65,7 @@ def review_pair(review, pair, *, flip=None):
     flip = bool(randbelow(2)) if flip is None else flip
     evaluations = []
     mapped = []
+    contradictions = []
     validator = Draft202012Validator(SCHEMA)
     for swap in (flip, not flip):
         order = [1, 0] if swap else [0, 1]
@@ -74,14 +75,23 @@ def review_pair(review, pair, *, flip=None):
             return {"status": "abstain_invalid_response", "winner": None}
         evaluations.append({"input_order": order, "judge": raw})
         winner = raw["winner"]
+        if winner in ("A", "B"):
+            other = "B" if winner == "A" else "A"
+            selected_scores, other_scores = raw[winner], raw[other]
+            if (all(selected_scores[axis] <= other_scores[axis] for axis in AXES)
+                    and any(selected_scores[axis] < other_scores[axis] for axis in AXES)):
+                contradictions.append(len(evaluations))
         mapped.append(order[0 if winner == "A" else 1] if winner in ("A", "B") else winner)
-    if mapped[0] != mapped[1]:
+    if contradictions:
+        status, winner = "abstain_score_contradiction", None
+    elif mapped[0] != mapped[1]:
         status, winner = "abstain_order_disagreement", None
     elif mapped[0] in (0, 1):
         status, winner = "model_preference_only", mapped[0]
     else:
         status, winner = mapped[0], None
     return {"status": status, "winner": winner, "rounds": evaluations,
+            "score_contradiction_rounds": contradictions,
             "human_verified": False, "standing_safety_verified": False}
 
 
