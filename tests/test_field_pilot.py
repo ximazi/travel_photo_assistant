@@ -100,7 +100,7 @@ class FieldPilotTest(unittest.TestCase):
         self.assertEqual((report["observer_requests"], report["planner_requests"]), (1, 1))
         self.assertEqual(list(report["skipped_modes"]), ["fixed_cards", "retrieved_cards"])
 
-    def test_empty_scene_renders_three_ghosts_without_detecting_a_person(self):
+    def test_empty_scene_skips_duplicate_and_renders_distinct_conditions(self):
         req = RuntimeInput.from_dict(_base_runtime_dict(
             subject_id=None, subject_count=None,
             hints={"detected_person_count": 0, "scene_tags": ["forest"],
@@ -111,8 +111,14 @@ class FieldPilotTest(unittest.TestCase):
         adapter = RuleBasedOfflineVisionAdapter()
         arms, report = run_comparison(adapter, AssetPaths.default(), req, empty_scene=True)
         self.assertEqual(report["comparison_target"], "empty_scene_placement")
-        self.assertEqual((report["observer_requests"], report["planner_requests"]), (1, 3))
-        self.assertFalse(report["skipped_modes"])
+        self.assertEqual((report["observer_requests"], report["planner_requests"]), (1, 2))
+        self.assertEqual(report["skipped_modes"], {"retrieved_cards": "duplicate_planner_input"})
+        self.assertEqual(report["duplicate_input_of"], {"retrieved_cards": "prompt_only"})
+        self.assertFalse(report["retrieved_card_effect_testable"])
+        self.assertEqual(report["effective_card_ids_by_mode"]["prompt_only"], [])
+        self.assertEqual(report["effective_card_ids_by_mode"]["retrieved_cards"], [])
+        self.assertEqual(len(report["effective_card_ids_by_mode"]["fixed_cards"]), 3)
+        self.assertEqual(report["status"], "needs_human_review")
         with tempfile.TemporaryDirectory() as tmp:
             photo = Path(tmp) / "fixture.jpg"
             Image.new("RGB", (300, 400)).save(photo)
@@ -143,3 +149,26 @@ class FieldPilotTest(unittest.TestCase):
             self.assertEqual(report["skipped_modes"]["fixed_cards"], "not_an_observed_empty_scene")
             self.assertEqual(placement_evidence(arms["prompt_only"][0])["status"],
                              "no_accepted_person_guide")
+
+    def test_empty_scene_keeps_a_distinct_retrieved_condition(self):
+        from travel_photo_assistant.knowledge import RetrievalMode, ShotCardRetriever
+        req = RuntimeInput.from_dict(_base_runtime_dict(
+            subject_id=None, subject_count=None,
+            hints={"detected_person_count": 0, "scene_tags": ["forest"]},
+        ))
+        real_retrieve = ShotCardRetriever.retrieve
+        def simulated_empty_card(retriever, observation, runtime_input, *, mode, max_cards):
+            if mode == RetrievalMode.RETRIEVED_CARDS:
+                result = real_retrieve(retriever, observation, runtime_input,
+                                       mode=RetrievalMode.FIXED_CARDS, max_cards=max_cards)
+                result.selected_cards = result.selected_cards[:1]
+                return result
+            return real_retrieve(retriever, observation, runtime_input,
+                                 mode=mode, max_cards=max_cards)
+        with patch.object(ShotCardRetriever, "retrieve", new=simulated_empty_card):
+            arms, report = run_comparison(RuleBasedOfflineVisionAdapter(), AssetPaths.default(),
+                                          req, empty_scene=True)
+        self.assertIn("retrieved_cards", arms)
+        self.assertEqual(report["planner_requests"], 3)
+        self.assertTrue(report["retrieved_card_effect_testable"])
+        self.assertEqual(len(report["effective_card_ids_by_mode"]["retrieved_cards"]), 1)
