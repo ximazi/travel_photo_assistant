@@ -77,10 +77,11 @@ class TestEnvLoader(unittest.TestCase):
         finally:
             os.environ.pop("GEMINI_API_KEY", None)
 
-    def test_project_env_file_is_discoverable(self):
-        found = find_env_file()
-        self.assertIsNotNone(found)
-        self.assertEqual(found.name, ".env")
+    def test_explicit_env_file_is_discoverable_on_a_clean_checkout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            env_file = Path(tmp) / ".env"
+            env_file.write_text("TPA_VISION_PROVIDER=offline\n", encoding="utf-8")
+            self.assertEqual(find_env_file(start=env_file), env_file.resolve())
 
 
 class TestWrap(unittest.TestCase):
