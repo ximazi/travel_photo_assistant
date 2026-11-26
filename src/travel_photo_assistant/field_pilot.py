@@ -161,18 +161,39 @@ def run_comparison(adapter, assets, req, *, empty_scene=False):
     frozen = FrozenObserver(adapter, req.frame.frame_id)
     results = {}
     skip = {}
+    effective_cards = {}
+    duplicate_of = {}
+    observation_blocked = False
     for mode in (RetrievalMode.PROMPT_ONLY, RetrievalMode.FIXED_CARDS, RetrievalMode.RETRIEVED_CARDS):
         controller = TravelPhotoController(frozen, assets=assets, config=RuntimeConfig(retry_on_validation_error=False))
+        if empty_scene and mode != RetrievalMode.PROMPT_ONLY:
+            # Planner requests do not carry the retrieval mode itself. On the
+            # frozen observation, identical ordered cards mean identical input.
+            mode_cards = controller.retriever.retrieve(
+                obs, req, mode=mode, max_cards=controller.config.max_retrieved_cards,
+            ).selected_cards
+            card_ids = [card.id for card in mode_cards]
+            prior = next((m for m, ids in effective_cards.items()
+                          if m in results and ids == card_ids), None)
+            if prior is not None:
+                effective_cards[mode.value] = card_ids
+                duplicate_of[mode.value] = prior
+                skip[mode.value] = "duplicate_planner_input"
+                continue
         start = perf_counter()
         result = controller.run_slow_loop(req, retrieval_mode=mode.value)
+        if result.retrieval is not None:
+            effective_cards[mode.value] = [card.id for card in result.retrieval.selected_cards]
         results[mode.value] = (result, round((perf_counter() - start) * 1000))
         if mode == RetrievalMode.PROMPT_ONLY:
             obs = result.observation or {}
             if not result.observation_validation or not result.observation_validation.is_valid:
+                observation_blocked = True
                 skip = {"fixed_cards": "invalid_observation", "retrieved_cards": "invalid_observation"}
                 break
             subject = obs.get("selected_subject")
             if obs.get("status") != "observed" or (subject is not None) == empty_scene:
+                observation_blocked = True
                 reason = ("not_an_observed_empty_scene" if empty_scene else
                           "no_confirmed_subject_for_portrait_comparison")
                 skip = {"fixed_cards": reason, "retrieved_cards": reason}
@@ -181,7 +202,13 @@ def run_comparison(adapter, assets, req, *, empty_scene=False):
     if len(hashes) != 1:
         raise ValueError("Comparison arms did not consume the same observation.")
     return results, {
-        "status": "needs_human_review" if not skip else "comparison_not_scored",
+        "status": ("comparison_not_scored" if observation_blocked else
+                   "needs_human_review" if len(results) > 1 else "single_condition_only"),
+        "effective_card_ids_by_mode": effective_cards,
+        "duplicate_input_of": duplicate_of,
+        "retrieved_card_effect_testable": (
+            "retrieved_cards" in results and bool(effective_cards.get("retrieved_cards"))
+        ),
         "observation_sha256": next(iter(hashes)),
         "observer_requests": frozen.observation_calls,
         "planner_requests": frozen.planner_calls,
@@ -262,7 +289,7 @@ def main(argv: list[str] | None = None) -> int:
         if a.compare_empty_scene:
             export_clean_crops(image, comparison["framing_shortlist"], a.out / "clean_review")
         (a.out / "comparison.json").write_text(json.dumps(comparison, ensure_ascii=False, indent=2), encoding="utf-8")
-    if a.compare_empty_scene and (comparison["skipped_modes"] or any(
+    if a.compare_empty_scene and (comparison["status"] == "comparison_not_scored" or any(
         guide["status"] != "tentative_composition_only"
         for guide in comparison["arm_placement"].values()
     )):
