@@ -125,7 +125,38 @@ def arm_movement(result):
     }
 
 
-def run_comparison(adapter, assets, req):
+def placement_evidence(result):
+    """Report a proposal separately from a visible ground cue or real-world safety."""
+    if not result.accepted or (result.plan or {}).get("status") != "no_subject":
+        return {"status": "no_accepted_person_guide"}
+    guide = result.plan.get("subject_placement_guide")
+    if not guide:
+        return {"status": "no_accepted_person_guide"}
+    x1, y1, x2, y2 = guide["bbox"]
+    # Cropped body proposals have no visible feet; do not invent a ground point.
+    foot = [(x1 + x2) / 2, y2] if guide["framing"] == "full_body" else None
+    observation = result.observation or {}
+    ground_ids = []
+    if foot:
+        x, y = foot
+        for a in observation.get("anchors", []):
+            box = a.get("bbox")
+            if (a.get("kind") == "possible_ground" and box and
+                    box[0] < box[2] and box[1] < box[3] and
+                    box[0] <= x <= box[2] and box[1] <= y <= box[3]):
+                ground_ids.append(a["anchor_id"])
+    return {
+        "status": "tentative_composition_only",
+        "bbox": guide["bbox"],
+        "foot_point": foot,
+        "guide_height_ratio": round(y2 - y1, 4),
+        "possible_ground_anchor_ids": ground_ids,
+        "standing_safety_verified": False,
+        "new_frame_verified": False,
+    }
+
+
+def run_comparison(adapter, assets, req, *, empty_scene=False):
     frozen = FrozenObserver(adapter, req.frame.frame_id)
     results = {}
     skip = {}
@@ -139,9 +170,11 @@ def run_comparison(adapter, assets, req):
             if not result.observation_validation or not result.observation_validation.is_valid:
                 skip = {"fixed_cards": "invalid_observation", "retrieved_cards": "invalid_observation"}
                 break
-            if obs.get("status") != "observed" or not obs.get("selected_subject"):
-                skip = {"fixed_cards": "no_confirmed_subject_for_portrait_comparison",
-                        "retrieved_cards": "no_confirmed_subject_for_portrait_comparison"}
+            subject = obs.get("selected_subject")
+            if obs.get("status") != "observed" or (subject is not None) == empty_scene:
+                reason = ("not_an_observed_empty_scene" if empty_scene else
+                          "no_confirmed_subject_for_portrait_comparison")
+                skip = {"fixed_cards": reason, "retrieved_cards": reason}
                 break
     hashes = {observation_sha(result.observation) for result, _ in results.values()}
     if len(hashes) != 1:
@@ -153,6 +186,9 @@ def run_comparison(adapter, assets, req):
         "planner_requests": frozen.planner_calls,
         "evaluated_modes": list(results),
         "skipped_modes": skip,
+        "comparison_target": "empty_scene_placement" if empty_scene else "existing_subject",
+        "arm_placement": {mode: placement_evidence(result) for mode, (result, _) in results.items()}
+        if empty_scene else {},
         "movement_condition": movement_condition(req),
         "arm_movement": {mode: arm_movement(result) for mode, (result, _) in results.items()},
         "card_budget_matched": False,
@@ -172,6 +208,8 @@ def main(argv: list[str] | None = None) -> int:
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--mode", choices=[m.value for m in RetrievalMode], default="retrieved_cards")
     mode.add_argument("--compare", action="store_true", help="固定一次观察，对照无卡/固定卡/检索卡（至多四次请求）")
+    mode.add_argument("--compare-empty-scene", action="store_true",
+                      help="Compare three person placement previews on a genuinely empty frame.")
     p.add_argument("--confirm-free-project", action="store_true",
                    help="已核实 Gemini API 项目没有启用计费且此模型在当前 Free Tier 内")
     p.add_argument("--allow-photo-to-gemini", action="store_true",
@@ -179,6 +217,8 @@ def main(argv: list[str] | None = None) -> int:
     a = p.parse_args(argv)
     if not (a.confirm_free_project and a.allow_photo_to_gemini):
         p.error("Both consent and a verified non-billing Free Tier project are required.")
+    if a.compare_empty_scene and a.confirm_photographer_side_step:
+        p.error("Empty-scene placement is a still preview, not a movement trial.")
     from re import fullmatch
     if not fullmatch(r"gemini-[a-zA-Z0-9.\-]+", a.model):
         p.error("Expected a Gemini model ID, not a URL.")
@@ -198,8 +238,8 @@ def main(argv: list[str] | None = None) -> int:
         p.error(f"Cannot prepare the photo ({type(e).__name__}).")
     a.out.mkdir(parents=True, mode=0o700)
     try:
-        if a.compare:
-            results, comparison = run_comparison(adapter, assets, req)
+        if a.compare or a.compare_empty_scene:
+            results, comparison = run_comparison(adapter, assets, req, empty_scene=a.compare_empty_scene)
         else:
             start = perf_counter()
             controller = TravelPhotoController(adapter, assets=assets, config=RuntimeConfig(retry_on_validation_error=False))
@@ -211,11 +251,16 @@ def main(argv: list[str] | None = None) -> int:
         (a.out / "run.json").write_text(json.dumps({"status": "adapter_failed", "class": type(e).__name__}), encoding="utf-8")
         return 2
     for mode, (result, elapsed_ms) in results.items():
-        target = a.out / mode if a.compare else a.out
+        target = a.out / mode if comparison is not None else a.out
         target.mkdir(mode=0o700, exist_ok=True)
         write_arm(target, result, elapsed_ms, mode, a.model, assets, image, req)
     if comparison is not None:
         (a.out / "comparison.json").write_text(json.dumps(comparison, ensure_ascii=False, indent=2), encoding="utf-8")
+    if a.compare_empty_scene and (comparison["skipped_modes"] or any(
+        guide["status"] != "tentative_composition_only"
+        for guide in comparison["arm_placement"].values()
+    )):
+        return 1
     return 0 if all(result.accepted for result, _ in results.values()) else 1
 
 
@@ -250,6 +295,7 @@ def write_arm(out, result, elapsed_ms, mode, model, assets, image, req):
                         (assets.observer_prompt, assets.planner_prompt, assets.shot_cards)},
            "movement_condition": movement_condition(req),
            "movement": arm_movement(result),
+           "placement": placement_evidence(result),
            "normalization_changes": result.normalization_changes,
            "selected_card_ids": [c.id for c in result.retrieval.selected_cards] if result.retrieval else [],
            "validation_issues": [{"stage": name, "code": issue.code, "field": issue.field_path}

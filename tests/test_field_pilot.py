@@ -12,7 +12,8 @@ from travel_photo_assistant.adapters.providers import GeminiVisionAdapter
 from travel_photo_assistant.adapters.mock import RuleBasedOfflineVisionAdapter
 from travel_photo_assistant.config import AssetPaths
 from travel_photo_assistant.evaluation import _base_runtime_dict
-from travel_photo_assistant.field_pilot import main, prepare_photo, run_comparison
+from travel_photo_assistant.field_pilot import main, placement_evidence, prepare_photo, run_comparison
+from travel_photo_assistant.render import render_overlay
 from travel_photo_assistant.models import RuntimeInput
 
 
@@ -98,3 +99,47 @@ class FieldPilotTest(unittest.TestCase):
         self.assertEqual(report["status"], "comparison_not_scored")
         self.assertEqual((report["observer_requests"], report["planner_requests"]), (1, 1))
         self.assertEqual(list(report["skipped_modes"]), ["fixed_cards", "retrieved_cards"])
+
+    def test_empty_scene_renders_three_ghosts_without_detecting_a_person(self):
+        req = RuntimeInput.from_dict(_base_runtime_dict(
+            subject_id=None, subject_count=None,
+            hints={"detected_person_count": 0, "scene_tags": ["forest"],
+                   "anchors": [{"anchor_id": "ground", "kind": "possible_ground",
+                                "description": "Visible level area in fixture",
+                                "bbox": [0.1, 0.65, 0.9, 0.98], "points": []}]},
+        ))
+        adapter = RuleBasedOfflineVisionAdapter()
+        arms, report = run_comparison(adapter, AssetPaths.default(), req, empty_scene=True)
+        self.assertEqual(report["comparison_target"], "empty_scene_placement")
+        self.assertEqual((report["observer_requests"], report["planner_requests"]), (1, 3))
+        self.assertFalse(report["skipped_modes"])
+        with tempfile.TemporaryDirectory() as tmp:
+            photo = Path(tmp) / "fixture.jpg"
+            Image.new("RGB", (300, 400)).save(photo)
+            for mode, (arm, _) in arms.items():
+                self.assertTrue(arm.accepted, arm.plan_validation)
+                self.assertIsNone(arm.observation["selected_subject"])
+                self.assertEqual(arm.plan["status"], "no_subject")
+                guide = report["arm_placement"][mode]
+                self.assertEqual(guide["status"], "tentative_composition_only")
+                self.assertFalse(guide["standing_safety_verified"])
+                self.assertFalse(guide["new_frame_verified"])
+                if arm.plan["subject_placement_guide"]["framing"] == "full_body":
+                    self.assertIsNotNone(guide["foot_point"])
+                rendered = render_overlay(photo, arm.plan, Path(tmp) / (mode + ".jpg"),
+                                          observation=arm.observation)
+                self.assertIsNotNone(rendered.ghost_bbox_px)
+                self.assertIsNone(rendered.subject_bbox_px)
+                self.assertIsNone(rendered.target_bbox_px)
+
+    def test_empty_scene_excludes_unselected_people_and_existing_subject(self):
+        for count in (1, 2):
+            req = RuntimeInput.from_dict(_base_runtime_dict(
+                subject_id=None, subject_count=count, hints={"detected_person_count": count},
+            ))
+            arms, report = run_comparison(RuleBasedOfflineVisionAdapter(), AssetPaths.default(),
+                                          req, empty_scene=True)
+            self.assertEqual(list(arms), ["prompt_only"])
+            self.assertEqual(report["skipped_modes"]["fixed_cards"], "not_an_observed_empty_scene")
+            self.assertEqual(placement_evidence(arms["prompt_only"][0])["status"],
+                             "no_accepted_person_guide")

@@ -31,6 +31,8 @@
 7. basis 说明位置依据：rule_of_thirds（三分线）、centered_symmetry（对称中轴）、leading_line_anchor（顺着引导线）、open_area（画面留白处）。
 8. 虚框是基于画面的构图建议，不是对现场的测量；不要因此编造地面承重、通行空间或光照条件。
 
+For an empty frame: before choosing the one silhouette, compare the uncropped frame with the strongest plausible alternate composition. Preserve meaningful landmark/context; reject a visually blocked standing area. For a full-body silhouette, align its lower midpoint with a localized possible_ground anchor where the pixels support it. An anchor is not proof of safe standing. Only show a tentative preview in the current frame; never present a still/crop as a verified new viewpoint, zoom setting, or permission to walk.
+
 【景观裁剪建议 crop_recommendation】
 纯景观画面（无人物）还需要一张能直接用的裁剪建议：
 1. 与人物虚框同在：observed 且 selected_subject 为 null 时必须非空；画面已有人物时必须为 null（构图由人物决定）。
