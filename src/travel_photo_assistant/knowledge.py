@@ -40,6 +40,20 @@ def _box(region: Any) -> tuple[float, float, float, float] | None:
     return (x0, y0, x1, y1) if x0 < x1 and y0 < y1 else None
 
 
+def _has_anchor_geometry(anchor: dict[str, Any]) -> bool:
+    """A nondegenerate normalized box or two distinct normalized points."""
+    if _box(anchor.get("bbox")) is not None:
+        return True
+    points = anchor.get("points")
+    if not isinstance(points, list):
+        return False
+    return len({
+        tuple(point) for point in points
+        if isinstance(point, list) and len(point) == 2
+        and all(type(v) in (int, float) and 0 <= v <= 1 for v in point)
+    }) >= 2
+
+
 def _has_selected_face_dapple(observation: dict[str, Any]) -> bool:
     """Require a localized observer report, not an independent pixel measurement."""
     subject = observation.get("selected_subject") or {}
@@ -165,7 +179,8 @@ class ShotCardRetriever:
         # Mode C: metadata + visual evidence + constraint gating
         obs_tags = set(observation.get("scene_tags", []))
         inferred_visual_tags = self._extract_visual_evidence_tags(observation)
-        all_visual_tags = obs_tags | inferred_visual_tags
+        # A scene label is not proof that a composition anchor exists.
+        all_visual_tags = (obs_tags - {"leading_line"}) | inferred_visual_tags
         goal_tags = set(self._infer_goal_tags(runtime_input))
 
         evaluations: list[CardEvaluation] = []
@@ -196,7 +211,7 @@ class ShotCardRetriever:
 
         for anchor in observation.get("anchors", []):
             kind = anchor.get("kind")
-            if kind == "leading_line":
+            if kind == "leading_line" and _has_anchor_geometry(anchor):
                 tags.add("leading_line")
             elif kind == "landmark":
                 tags.add("landmark")
