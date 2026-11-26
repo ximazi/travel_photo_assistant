@@ -42,3 +42,21 @@ Refs #1, #8, #10. This is a field-pilot feature, not a mobile release.
   screened on those same labeled pairs, not assumed to generalize from generic
   image quality or attribute scores.
 
+
+## Candidate shortlist preflight (#20)
+
+For each accepted full-body arm, inspect both the original and its suggested
+crop. A crop must retain at least 55% of original area and a 480 px short edge,
+match its stated pixel aspect, and retain the silhouette and localized
+landmark bounds with 1% crop-space margin. A visible ground cue under the
+footpoint is necessary for this shortlist, not an access or safety conclusion.
+It is a conservative full-body-only pilot; intentionally tighter portraits
+need a different contract, and no accepted candidates is a legitimate result.
+
+An identical pixel crop has one clean preview but can have multiple distinct
+placements. The clean-pixel judge cannot score those placements. Compare
+the placement geometry separately; a later placement judge needs identical
+neutral overlays or explicit candidate geometry and a different prompt. The
+clean before/after judge must never see overlays. The pilot exports a
+shortlist and local unmarked crops; it does not call a judge, pick a winning
+box, or fabricate alternative camera positions.

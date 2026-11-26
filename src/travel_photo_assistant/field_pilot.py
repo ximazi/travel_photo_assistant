@@ -19,6 +19,7 @@ from .config import AssetPaths, RuntimeConfig
 from .controller import TravelPhotoController
 from .env_loader import load_dotenv
 from .knowledge import RetrievalMode
+from .framing_shortlist import arm_shortlist, export_clean_crops
 from .models import RuntimeInput
 from .render import render_overlay
 
@@ -189,6 +190,9 @@ def run_comparison(adapter, assets, req, *, empty_scene=False):
         "comparison_target": "empty_scene_placement" if empty_scene else "existing_subject",
         "arm_placement": {mode: placement_evidence(result) for mode, (result, _) in results.items()}
         if empty_scene else {},
+        "framing_shortlist": arm_shortlist(results, (req.frame.upright_input_width_px,
+                                                       req.frame.upright_input_height_px))
+        if empty_scene else None,
         "movement_condition": movement_condition(req),
         "arm_movement": {mode: arm_movement(result) for mode, (result, _) in results.items()},
         "card_budget_matched": False,
@@ -255,6 +259,8 @@ def main(argv: list[str] | None = None) -> int:
         target.mkdir(mode=0o700, exist_ok=True)
         write_arm(target, result, elapsed_ms, mode, a.model, assets, image, req)
     if comparison is not None:
+        if a.compare_empty_scene:
+            export_clean_crops(image, comparison["framing_shortlist"], a.out / "clean_review")
         (a.out / "comparison.json").write_text(json.dumps(comparison, ensure_ascii=False, indent=2), encoding="utf-8")
     if a.compare_empty_scene and (comparison["skipped_modes"] or any(
         guide["status"] != "tentative_composition_only"
