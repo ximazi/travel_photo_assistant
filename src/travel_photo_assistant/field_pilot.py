@@ -23,7 +23,11 @@ from .models import RuntimeInput
 from .render import render_overlay
 
 
-def prepare_photo(path: Path, goal: str) -> tuple[RuntimeInput, bytes]:
+def prepare_photo(
+    path: Path, goal: str, *, confirmed_photographer_side_step: str | None = None
+) -> tuple[RuntimeInput, bytes]:
+    if confirmed_photographer_side_step not in (None, "left", "right"):
+        raise ValueError("Expected no side-step permission, left, or right.")
     from PIL import Image, ImageOps
 
     with Image.open(path) as source:
@@ -52,8 +56,12 @@ def prepare_photo(path: Path, goal: str) -> tuple[RuntimeInput, bytes]:
             "allow_subject_walking": False,
         },
         "camera_capabilities": {"metadata_available": False, "available_lenses": [], "current_lens_id": None},
-        "movement_constraints": {"photographer_translation": "unknown",
-                                 "subject_translation": "not_requested", "standing_in_place_confirmed": False},
+        "movement_constraints": {
+            "photographer_translation": "allowed" if confirmed_photographer_side_step else "unknown",
+            "photographer_side_step": confirmed_photographer_side_step,
+            "subject_translation": "not_requested",
+            "standing_in_place_confirmed": False,
+        },
         "local_vision_hints": {},
     }), pixels
 
@@ -91,6 +99,32 @@ def observation_sha(observation):
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def movement_condition(req):
+    constraints = req.movement_constraints
+    return {
+        "photographer_translation": constraints.photographer_translation,
+        "confirmed_photographer_side_step": constraints.photographer_side_step,
+        "subject_translation": constraints.subject_translation,
+        "allow_subject_walking": req.user_goal.allow_subject_walking,
+    }
+
+
+def arm_movement(result):
+    plan = result.plan or {}
+    active_id = plan.get("active_action_id")
+    active = next((a for a in plan.get("actions", []) if active_id and a.get("action_id") == active_id), {})
+    accepted_step = (
+        result.accepted and plan.get("status") == "plan_ready"
+        and active.get("operation") == "physical_translate" and active.get("actor") == "photographer"
+    )
+    return {
+        "active_operation": active.get("operation"),
+        "active_photographer_step_accepted": accepted_step,
+        "completion_check": active.get("completion_check", {}).get("type"),
+        "fresh_frame_verified": False,  # A field still cannot verify post-movement separation.
+    }
+
+
 def run_comparison(adapter, assets, req):
     frozen = FrozenObserver(adapter, req.frame.frame_id)
     results = {}
@@ -119,6 +153,8 @@ def run_comparison(adapter, assets, req):
         "planner_requests": frozen.planner_calls,
         "evaluated_modes": list(results),
         "skipped_modes": skip,
+        "movement_condition": movement_condition(req),
+        "arm_movement": {mode: arm_movement(result) for mode, (result, _) in results.items()},
         "card_budget_matched": False,
         "latency_note": "First arm includes observation latency; subsequent arms do not.",
     }
@@ -130,6 +166,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--goal", required=True, help="拍摄意图，不包含人工标注/参考答案")
     p.add_argument("--out", required=True, type=Path, help="新增私有结果目录，不要用 Git checkout 下的目录")
     p.add_argument("--model", required=True, help="AI Studio 中确认可用的免费 Gemini 模型 ID")
+    p.add_argument("--confirm-photographer-side-step", choices=("left", "right"),
+                   help="Operator currently at the location confirms exactly one small step "
+                        "to the photographer's own left or right is safe. Omit for an old photo.")
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--mode", choices=[m.value for m in RetrievalMode], default="retrieved_cards")
     mode.add_argument("--compare", action="store_true", help="固定一次观察，对照无卡/固定卡/检索卡（至多四次请求）")
@@ -153,7 +192,8 @@ def main(argv: list[str] | None = None) -> int:
     if not adapter.api_key:
         p.error("GEMINI_API_KEY is not configured.")
     try:
-        req, image = prepare_photo(a.photo, a.goal)
+        req, image = prepare_photo(a.photo, a.goal,
+                                   confirmed_photographer_side_step=a.confirm_photographer_side_step)
     except (OSError, ValueError) as e:
         p.error(f"Cannot prepare the photo ({type(e).__name__}).")
     a.out.mkdir(parents=True, mode=0o700)
@@ -173,13 +213,34 @@ def main(argv: list[str] | None = None) -> int:
     for mode, (result, elapsed_ms) in results.items():
         target = a.out / mode if a.compare else a.out
         target.mkdir(mode=0o700, exist_ok=True)
-        write_arm(target, result, elapsed_ms, mode, a.model, assets, image)
+        write_arm(target, result, elapsed_ms, mode, a.model, assets, image, req)
     if comparison is not None:
         (a.out / "comparison.json").write_text(json.dumps(comparison, ensure_ascii=False, indent=2), encoding="utf-8")
     return 0 if all(result.accepted for result, _ in results.values()) else 1
 
 
-def write_arm(out, result, elapsed_ms, mode, model, assets, image):
+def overlay_plan(result, req):
+    plan = deepcopy(result.plan)
+    if not plan or not req.movement_constraints.photographer_side_step:
+        return plan
+    # Diagnostic JSON retains planner prose, but it is not a second direction.
+    # The scoped-still overlay only displays the canonical action and observed anchors.
+    movement = arm_movement(result)
+    primary = plan.get("primary_plan")
+    if primary:
+        primary["title"] = "On-site side-step trial (unverified)" if movement["active_photographer_step_accepted"] else "Diagnostic still"
+        primary["composition"]["target_subject_bbox"] = None
+    plan["scene_summary"] = "Diagnostic still"
+    plan["alternative"] = None
+    plan["subject_placement_guide"] = None
+    plan["crop_recommendation"] = None
+    if not movement["active_photographer_step_accepted"]:
+        plan["actions"] = []
+        plan["active_action_id"] = None
+    return plan
+
+
+def write_arm(out, result, elapsed_ms, mode, model, assets, image, req):
     run = {"status": "needs_human_review", "provider": "gemini", "model": model, "mode": mode,
            "elapsed_ms": elapsed_ms, "accepted": result.accepted,
            "fallback": result.downgraded_to_fallback, "validation_retries_enabled": False,
@@ -187,6 +248,9 @@ def write_arm(out, result, elapsed_ms, mode, model, assets, image):
            "observation_sha256": observation_sha(result.observation),
            "versions": {x.name: hashlib.sha256(x.read_bytes()).hexdigest() for x in
                         (assets.observer_prompt, assets.planner_prompt, assets.shot_cards)},
+           "movement_condition": movement_condition(req),
+           "movement": arm_movement(result),
+           "normalization_changes": result.normalization_changes,
            "selected_card_ids": [c.id for c in result.retrieval.selected_cards] if result.retrieval else [],
            "validation_issues": [{"stage": name, "code": issue.code, "field": issue.field_path}
                                  for name, val in (("input", result.input_validation),
@@ -201,7 +265,7 @@ def write_arm(out, result, elapsed_ms, mode, model, assets, image):
         with TemporaryDirectory() as tmp:
             normalized = Path(tmp) / "normalized.jpg"
             normalized.write_bytes(image)
-            render_overlay(normalized, result.plan, out / "overlay.jpg", observation=result.observation)
+            render_overlay(normalized, overlay_plan(result, req), out / "overlay.jpg", observation=result.observation)
 
 
 if __name__ == "__main__":

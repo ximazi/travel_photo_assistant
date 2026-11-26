@@ -516,7 +516,7 @@ def normalize_observation(
 
 
 def normalize_plan(
-    payload: dict[str, Any],
+    payload: dict[str, Any], *, photographer_side_step: str | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
     """Fold near-miss enum values in a shot_plan onto the canonical set."""
     cloned = copy.deepcopy(payload)
@@ -539,4 +539,21 @@ def normalize_plan(
             }
         },
     )
+    # The operator chose a body-relative side. Never let planner prose reverse it
+    # or add a second move. Only canonicalize the physical action, not diagnosis.
+    if photographer_side_step in ("left", "right") and isinstance(cloned.get("actions"), list):
+        word = "左" if photographer_side_step == "left" else "右"
+        for i, action in enumerate(cloned["actions"]):
+            if not isinstance(action, dict) or action.get("actor") != "photographer" or action.get("operation") != "physical_translate":
+                continue
+            check = action.get("completion_check")
+            if isinstance(check, dict) and check.get("type") == "head_obstacle_separated" and check.get("check_by") == "vlm_review":
+                action["instruction"] = (
+                    f"保持镜头不变，拍摄者只向自己的{word}侧小幅侧移一步并停下。"
+                    "现场不安全就不要移动；移动后重新取景，复核头部与背景是否分离。"
+                    "若仍重叠，不再移动，返回等待。"
+                )
+                action["prerequisites"] = ["拍摄者已在现场确认该侧仅一步的安全空间"]
+                check["description"] = "以移动后新帧复核头部轮廓与背景物分离；未分离、画面不清或过期均不算完成。"
+                changes.append(f"actions[{i}].instruction: bounded to operator-confirmed {photographer_side_step} side")
     return cloned, changes

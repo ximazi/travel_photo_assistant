@@ -57,3 +57,4 @@ frame_id和scene_version原样复制，不得使用旧帧内容冒充当前观�
 - light.strength: high | medium | low
 若某个观察维度确实无法判断，仍按上表选最接近的一项（例如无法判断光向填 unknown），不要输出表外的词。
 
+头部重合证据（不能根据场景标签猜测）：只在当前图像中清楚看到已选人物头部和某个背景物真实重合时，使用一条 kind=geometry、source=vlm_visual、strength=high 的事实，statement 严格使用“选定人物头部与背景电线杆重合”（也可替换为路牌、树干或柱子），region 只框选重合的头部局部，不框选整个物体或人物。相应 issue 的 fact_ids 必须包含该事实。未重合、仅靠近、无明确主体或不确定时不要输出此事实。
