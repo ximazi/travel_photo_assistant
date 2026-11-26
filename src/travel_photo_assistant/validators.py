@@ -34,6 +34,44 @@ PHYSICAL_MOVEMENT_OPERATIONS = {"physical_translate"}
 NON_PARALLAX_OPERATIONS = {"reframe_pan", "reframe_tilt", "change_zoom"}
 
 
+# Deliberately narrow positive vocabulary, not an interpretation of arbitrary prose.
+_SCOPED_HEAD_OVERLAP = re.compile(
+    r"(?:选定人物头部与背景(?:电线杆|路牌|树干|柱子)重合"
+    r"|the selected subject's head overlaps a background (?:utility pole|street sign|tree trunk|pillar))[。.]?",
+    re.IGNORECASE,
+)
+
+
+def _has_scoped_head_overlap(observation: dict[str, Any], action: dict[str, Any]) -> bool:
+    """Require an observer claim linked to the action and localized near the subject's head."""
+    subject = observation.get("selected_subject") or {}
+    box = subject.get("bbox")
+    if observation.get("status") != "observed" or not box or (
+        action.get("completion_check", {}).get("reference_id") != subject.get("subject_id")
+    ):
+        return False
+    linked = {fid for issue in observation.get("issues", []) for fid in issue.get("fact_ids", [])}
+    cited = linked.intersection(action.get("evidence_fact_ids", []))
+    left, top, right, bottom = box
+    for fact in observation.get("facts", []):
+        region = fact.get("region")
+        if (
+            fact.get("fact_id") not in cited or fact.get("kind") != "geometry"
+            or fact.get("source") != "vlm_visual" or fact.get("strength") != "high" or not region
+            or not _SCOPED_HEAD_OVERLAP.fullmatch(fact.get("statement", "").strip())
+        ):
+            continue
+        x0, y0, x1, y1 = region
+        # Localized intersection at the top third of the subject box, not an entire image/obstacle.
+        head_bottom = top + (bottom - top) / 3
+        if (
+            max(left, x0) < min(right, x1) and max(top, y0) < min(head_bottom, y1)
+            and 0 < x1 - x0 <= right - left and 0 < y1 - y0 <= (bottom - top) / 3
+        ):
+            return True
+    return False
+
+
 @dataclass(frozen=True)
 class ValidationIssue:
     """Single business or schema validation finding."""
@@ -110,6 +148,17 @@ class BusinessRuleValidator:
                         "Production mode rejects lens metadata with source=synthetic_fixture.",
                         f"camera_capabilities.available_lenses[{idx}]",
                     )
+
+        movement = runtime_input.movement_constraints
+        if movement.photographer_side_step is not None and (
+            movement.photographer_side_step not in ("left", "right")
+            or movement.photographer_translation != "allowed"
+        ):
+            result.add_error(
+                "INVALID_PHOTOGRAPHER_SIDE_STEP",
+                "A confirmed photographer side-step must be left or right with translation allowed.",
+                "movement_constraints.photographer_side_step",
+            )
 
         # Rule (Section I): real image attachments are required for normal observation
         if not runtime_input.frame.image_attachments:
@@ -507,6 +556,24 @@ class BusinessRuleValidator:
             mc = runtime_input.movement_constraints
             if op == "physical_translate":
                 if actor == "photographer":
+                    if mc.photographer_side_step is not None:
+                        if (
+                            status != "plan_ready" or not subject_present or not act.get("evidence_fact_ids")
+                            or act.get("direction_reference") != "photographer_body"
+                            or check_type != "head_obstacle_separated" or check.get("check_by") != "vlm_review"
+                            or aid != active_action_id or idx != 0 or len(actions) != 1
+                        ):
+                            result.add_error(
+                                "INVALID_SCOPED_SIDE_STEP",
+                                "The single allowed side-step must be the only action, active, body-relative, and require visual separation in a new frame.",
+                                f"actions[{idx}]",
+                            )
+                        if not _has_scoped_head_overlap(observation, act):
+                            result.add_error(
+                                "SCOPED_SIDE_STEP_OVERLAP_UNSUPPORTED",
+                                "An observed, localized head overlap fact must link the selected subject, issue, and action.",
+                                f"actions[{idx}].evidence_fact_ids",
+                            )
                     if mc.photographer_translation in {"forbidden", "tripod_fixed"}:
                         result.add_error(
                             "PHOTOGRAPHER_TRANSLATION_FORBIDDEN",

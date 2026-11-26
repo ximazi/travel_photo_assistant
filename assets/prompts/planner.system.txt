@@ -58,6 +58,7 @@
 - 镜头/变焦主要改变取景范围。改变人物与远景相对大小，需要结合拍摄位置；不能声称只切长焦就改变透视。
 - 画面留白或可见地面不代表可站立、可后退。移动空间未确认时优先使用原地取景/原地姿态方案，必要时先要求确认。
 - 人物动作服从站立与舒适限制，不要默认行走、跳跃、下水或跨越栏杆。
+- 若现场操作者已填写 photographer_side_step=left/right，仅允许拍摄者向身体的该侧试移一小步（不提示反方向或其他动作），且仅用于已观察的人物头部与背景重叠。动作 evidence_fact_ids 必须引用同一条与 issue 相连的高置信局部几何事实，且 completion_check.reference_id 必须等于选定人物 ID。证据不齐则不得建议试步。以单一动作表示：actor=photographer, operation=physical_translate, direction_reference=photographer_body, completion_check.type=head_obstacle_separated, check_by=vlm_review。新帧无证据时不可标记完成；未确认现场空间时不要提供位移动作。
 - 固定机位的自拍/三脚架模式必须尊重不能移动摄影师的约束。
 
 【镜头与参数】

@@ -7,7 +7,7 @@ anti-jitter hysteresis, and predefined completion checks).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from .adapters.base import VisionModelAdapter
@@ -136,9 +136,16 @@ class TravelPhotoController:
         #    Real vendors do not reliably enforce enum values in their response
         #    schemas, so the payload is folded onto the application vocabulary
         #    first, then validated, then retried once with the errors if needed.
+        # A scoped location confirmation constrains planning, not visual diagnosis.
+        observer_input = runtime_input
+        if runtime_input.movement_constraints.photographer_side_step is not None:
+            observer_input = replace(runtime_input, movement_constraints=replace(
+                runtime_input.movement_constraints,
+                photographer_translation="unknown", photographer_side_step=None,
+            ))
         observation, obs_changes = normalize_observation(
             self.adapter.observe(
-                runtime_input=runtime_input,
+                runtime_input=observer_input,
                 system_prompt=self._observer_prompt,
                 output_schema=self.schema_validator.observation_schema,
             )
@@ -148,7 +155,7 @@ class TravelPhotoController:
         if not obs_val.is_valid and self.config.retry_on_validation_error:
             feedback = self._format_feedback(obs_val.errors)
             retry_raw = self.adapter.observe(
-                runtime_input=runtime_input,
+                runtime_input=observer_input,
                 system_prompt=self._observer_prompt,
                 output_schema=self.schema_validator.observation_schema,
                 feedback=feedback,
@@ -196,7 +203,8 @@ class TravelPhotoController:
                 shot_cards=retrieval.selected_cards,
                 system_prompt=self._planner_prompt,
                 output_schema=self.schema_validator.shot_plan_schema,
-            )
+            ),
+            photographer_side_step=runtime_input.movement_constraints.photographer_side_step,
         )
         plan_val = self.validator.validate_shot_plan(
             plan=plan,
@@ -215,7 +223,9 @@ class TravelPhotoController:
                 output_schema=self.schema_validator.shot_plan_schema,
                 feedback=feedback,
             )
-            retry_norm, retry_changes = normalize_plan(retry_raw)
+            retry_norm, retry_changes = normalize_plan(
+                retry_raw, photographer_side_step=runtime_input.movement_constraints.photographer_side_step
+            )
             retry_val = self.validator.validate_shot_plan(
                 plan=retry_norm,
                 observation=observation,

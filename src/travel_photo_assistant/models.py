@@ -157,6 +157,7 @@ class MovementConstraints:
     photographer_translation: str = "unknown"  # allowed | unknown | forbidden | tripod_fixed
     subject_translation: str = "not_requested"  # allowed | unknown | not_requested | forbidden
     standing_in_place_confirmed: bool = True
+    photographer_side_step: str | None = None  # explicit left | right; None gives no extra permission
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> "MovementConstraints":
@@ -166,6 +167,7 @@ class MovementConstraints:
             photographer_translation=data.get("photographer_translation", "unknown"),
             subject_translation=data.get("subject_translation", "not_requested"),
             standing_in_place_confirmed=bool(data.get("standing_in_place_confirmed", True)),
+            photographer_side_step=data.get("photographer_side_step"),
         )
 
 
