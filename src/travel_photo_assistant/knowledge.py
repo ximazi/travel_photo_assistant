@@ -10,6 +10,7 @@ evaluation_protocol.txt Section VII:
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -18,6 +19,56 @@ from typing import Any
 
 from .config import AssetPaths
 from .models import RuntimeInput, ShotCard
+
+
+_DAPPLE_CARD_ID = "FOREST_DAPPLED_LIGHT_04"
+_DAPPLE_TAG = "dappled_face_light"
+_FACE_DAPPLE_CLAIM = re.compile(
+    r"(?:选定人物脸部可见强烈斑驳光斑|选定人物脸部可见不均匀斑驳阴影"
+    r"|the selected subject's face shows strong dappled highlights"
+    r"|the selected subject's face shows uneven dappled shadows)[。.]?",
+    re.IGNORECASE,
+)
+
+
+def _box(region: Any) -> tuple[float, float, float, float] | None:
+    if not isinstance(region, list) or len(region) != 4 or any(
+        type(value) not in (int, float) or not 0 <= value <= 1 for value in region
+    ):
+        return None
+    x0, y0, x1, y1 = region
+    return (x0, y0, x1, y1) if x0 < x1 and y0 < y1 else None
+
+
+def _has_selected_face_dapple(observation: dict[str, Any]) -> bool:
+    """Require a localized observer report, not an independent pixel measurement."""
+    subject = observation.get("selected_subject") or {}
+    if observation.get("status") != "observed" or subject.get("face_visibility") != "visible":
+        return False
+    subject_box = _box(subject.get("bbox"))
+    if subject_box is None:
+        return False
+    left, top, right, bottom = subject_box
+    linked = set(subject.get("fact_ids", [])) & set((observation.get("light") or {}).get("fact_ids", []))
+    for fact in observation.get("facts", []):
+        statement = fact.get("statement")
+        if (
+            fact.get("fact_id") not in linked or fact.get("kind") != "light"
+            or fact.get("source") != "vlm_visual" or fact.get("strength") != "high"
+            or not isinstance(statement, str) or not _FACE_DAPPLE_CLAIM.fullmatch(statement.strip())
+        ):
+            continue
+        region = _box(fact.get("region"))
+        if region is None:
+            continue
+        x0, y0, x1, y1 = region
+        # A compact upper-subject region is a conservative proxy, not face detection.
+        if (
+            left <= x0 < x1 <= right and top <= y0 < y1 <= top + (bottom - top) / 3
+            and x1 - x0 <= (right - left) * 0.8
+        ):
+            return True
+    return False
 
 
 class RetrievalMode(str, Enum):
@@ -161,16 +212,12 @@ class ShotCardRetriever:
                 tags.add("head_background_merge")
             if any(k in desc for k in ("游客", "杂物", "杂乱", "拥挤")):
                 tags.add("background_clutter")
-            if any(k in desc for k in ("斑驳", "光斑", "阴影不均")):
-                tags.add("dappled_face_light")
             if any(k in desc for k in ("弱光", "夜景", "模糊", "暗")):
                 tags.add("low_light")
 
         light_app = str(observation.get("light", {}).get("appearance", ""))
         if any(k in light_app for k in ("弱光", "夜景", "偏暗")):
             tags.add("low_light")
-        if any(k in light_app for k in ("斑驳", "光斑")):
-            tags.add("dappled_face_light")
 
         return tags
 
@@ -205,6 +252,14 @@ class ShotCardRetriever:
 
         if observation.get("status") != "observed":
             reasons.append(f"observation status is '{observation.get('status')}', not 'observed'")
+
+        if card.id == _DAPPLE_CARD_ID:
+            # Model scene tags are not evidence of a face-specific lighting issue.
+            all_visual_tags = all_visual_tags - {_DAPPLE_TAG}
+            if _has_selected_face_dapple(observation):
+                all_visual_tags.add(_DAPPLE_TAG)
+            else:
+                reasons.append("missing linked, high-confidence visual dapple on the selected visible face")
 
         matched_scene = sorted(set(card.scene_tags) & obs_tags)
         matched_goal = sorted(set(card.goal_tags) & goal_tags)
