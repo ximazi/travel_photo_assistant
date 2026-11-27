@@ -344,7 +344,11 @@ def write_arm(out, result, elapsed_ms, mode, model, assets, image, req):
         with TemporaryDirectory() as tmp:
             normalized = Path(tmp) / "normalized.jpg"
             normalized.write_bytes(image)
-            render_overlay(normalized, overlay_plan(result, req), out / "overlay.jpg", observation=result.observation)
+            # Keep rejected observations in the diagnostic JSON only. Invalid
+            # coordinates must not leak into (or crash) the safe fallback preview.
+            valid_observation = result.observation_validation is not None and result.observation_validation.is_valid
+            render_overlay(normalized, overlay_plan(result, req), out / "overlay.jpg",
+                           observation=result.observation if valid_observation else None)
 
 
 if __name__ == "__main__":
