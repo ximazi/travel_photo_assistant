@@ -16,11 +16,23 @@ shutter outcome.
 2. Take the empty reference frame. Do not reveal the generated silhouette,
    crop, prompt, or any placement clue to the photographer or subject yet.
 3. Have them shoot the unguided original. Verify that it was actually saved.
-4. Reset to the same starting view (mark the camera position and settings);
-   log light, crowd, lens or other drift instead of hiding it. Reveal one
-   suggested pose/placement frame if the standing area is confirmed in person.
-   Let them act on or decline it. Save the guided original. The guide need
-   not constrain the final shutter settings unless the protocol says so.
+4. Reset to the same starting view (mark the camera position, camera height,
+   starting lens/zoom and orientation). Before showing the guide, save one
+   more empty frame with the reset view. Compare a fixed near edge and a
+   distant landmark selected in the original empty reference; use stable
+   features, not people, waves or shadows. Mark the reset `matched` only
+   if both remain aligned in the frame at the same starting lens and
+   orientation, `drifted` for visible mismatch or known setup change, or
+   `uncertain` if a reference or usable landmark is missing. Record the
+   visible mismatch and any light or crowd drift separately. If the case
+   proceeds with a drifted or uncertain reset, keep it as a flagged
+   feasibility case, not a controlled placement comparison. Keep both
+   empty frames as operator-only checks, out of blind review.
+   Reveal one suggested pose/placement frame only if the standing area is
+   confirmed in person. Let them act on or decline it. Save the guided
+   original. The guide need not constrain the final shutter settings
+   unless the protocol says so; later guide-driven changes are distinct
+   from reset drift.
 5. Keep untouched originals. Prepare a private clean review pair from
    those originals, with equal preprocessing, no UI, silhouettes, capture
    condition, filenames or EXIF clues. Randomize presentation order; keep
@@ -32,8 +44,14 @@ shutter outcome.
 Record per pair: anonymous session ID, first completed original for each arm,
 guide shown and accepted or not, whether new frame actually matched the guide,
 time from start including model wait, extra attempts, save failures, condition
-drift, reviewer votes and any model abstention. Record photo-sharing scope
+drift, reset status and near/far anchor evidence, reviewer votes and any
+model abstention. Record photo-sharing scope
 separately; no photo files or private labels belong in GitHub.
+
+The near/far anchoring check is adapted from the
+[NPS repeat-photography field method](https://www.nps.gov/articles/000/aps-20-1-6.htm).
+It checks starting-frame comparability only; it does not remove practice
+effects or prove a better photograph.
 
 ## Interpreting results
 
