@@ -79,5 +79,44 @@ class PortraitJudgeTests(unittest.TestCase):
                           metric["invalid_or_missing_orders"]), (1, 2, 2))
 
 
+    def test_always_tie_is_not_selection_coverage(self):
+        flat = response()
+        flat["A"] = deepcopy(flat["B"])
+        flat["beauty"]["winner"] = flat["intent"]["winner"] = "tie"
+        pairs = [
+            {"pair_id": f"p{i}", "scene": "coast", "requirement_count": 1,
+             "human": {"beauty": "A" if i < 8 else "tie", "intent": "uncertain"},
+             "models": {"model/a": {"forward": flat, "reverse": flat}}}
+            for i in range(10)
+        ]
+        row = next(r for r in judge.summarize(pairs, ["model/a"])["metrics"]
+                   if r["scene"] == "all" and r["target"] == "beauty")
+        self.assertEqual(row["swap_stable"], 10)
+        self.assertEqual(row["human_decided_model_covered"], 10)
+        self.assertEqual(row["stable_model_picks"], 0)
+        self.assertEqual(row["stable_model_ties"], 10)
+        self.assertEqual(row["human_picks"], 8)
+        self.assertEqual(row["human_pick_model_picked"], 0)
+        self.assertEqual(row["human_pick_model_tied"], 8)
+        self.assertEqual(row["matches_human_picks"], 0)
+        self.assertEqual(row["matches_human_ties"], 2)
+        self.assertEqual(row["matches_human"], 2)
+
+    def test_real_pick_and_invalid_flat_vote_are_distinct(self):
+        bad = response()
+        bad["A"] = deepcopy(bad["B"])  # Equal axes, but receipt still claims A/B.
+        data = {"pair_id": "p1", "scene": "coast", "requirement_count": 1,
+                "human": {"beauty": "A", "intent": "tie"},
+                "models": {"good": {"forward": response(), "reverse": response(True)},
+                           "bad": {"forward": bad, "reverse": bad}}}
+        metrics = {(r["model"], r["target"]): r
+                   for r in judge.summarize([data], ["good", "bad"])["metrics"]
+                   if r["scene"] == "all"}
+        self.assertEqual(metrics["good", "beauty"]["matches_human_picks"], 1)
+        self.assertEqual(metrics["good", "intent"]["human_tie_model_picked"], 1)
+        self.assertEqual(metrics["bad", "beauty"]["invalid_or_missing_orders"], 2)
+        self.assertEqual(metrics["bad", "beauty"]["stable_model_ties"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()
