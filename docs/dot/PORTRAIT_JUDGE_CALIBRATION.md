@@ -49,7 +49,7 @@ intent: {"goal":"竖版旅行纪念照，人物为主体","required_elements":["
 }
 ```
 
-运行 `python scripts/compare_portrait_judges.py <private-batch.json>`。输出按模型、场景、审美/意图分别统计，附每对归一后的模型票；可定位模型互相冲突和所有模型一致但偏离人的案例。使用 `matches_human / human_decided_model_covered` 和 `matches_human / human_decided` 分别看选择质量和实际有效命中；覆盖为 `human_decided_model_covered / human_decided`。看 `swap_stable / both_valid` 时同时公布决定性换序稳定数、失败数和弃权数，不能用总是弃权提高评价。人判平时模型硬选次数单列。不因多数投票而把模型判断写成真值。理由文本能解析不代表像素依据是真的，仍需人工抽核。
+运行 `python scripts/compare_portrait_judges.py <private-batch.json>`。输出按模型、场景、审美/意图分别统计，附每对归一后的模型票；可定位模型互相冲突和所有模型一致但偏离人的案例。使用 `matches_human / human_decided_model_covered` 和 `matches_human / human_decided` 分别看选择质量和实际有效命中；覆盖为 `human_decided_model_covered / human_decided`。看 `swap_stable / both_valid` 时同时公布失败数、弃权数、稳定选出 A/B 的数（`stable_model_picks`）和稳定判平的数（`stable_model_ties`）。另报人有明确 A/B 偏好时的选片覆盖 `human_pick_model_picked / human_picks`、选对比例 `matches_human_picks / human_picks`、误判平率 `human_pick_model_tied / human_picks`，以及人判平时模型硬选次数和正确判平次数。分母为零表示不适用。总是判平可能让换序稳定和普通覆盖达到 100%，不等于会选片；正确的人类平票仍计入一致。不因多数投票而把模型判断写成真值。理由文本能解析不代表像素依据是真的，仍需人工抽核。
 
 ## 四、怎么根据分歧调优
 
@@ -57,4 +57,4 @@ intent: {"goal":"竖版旅行纪念照，人物为主体","required_elements":["
 2. 冻结提示词、阈值、人工标签规则和模型标识后，用 20 对独立留出比对；不看留出来调权重。报告逐场景人工一致、模型一致和覆盖、换序、平票误推与分歧案例，再决定哪个模型能当候选评委。工程门槛见总协议；不同模型都猜错时回到画面与人评。
 3. 优先修正硬需求误判和幻觉，再改善审美一致。如果留出失败，只能回开发集修正，再拿新的留出复验，不覆写旧结论。下一阶段才做同场真实指导重拍比较。
 
-当前证据：8 项 Windows 离线契约测试，覆盖排序矛盾、数值类型、硬要求、未知维度、平票及换序偏置；模型回执为测试构造，不代表任何真实模型表现。本轮没有提交照片或使用配额，跨模型真实结果尚未完成。
+当前证据：10 项 Windows 离线契约测试，覆盖排序矛盾、数值类型、硬要求、未知维度、平票及换序偏置；模型回执为测试构造，不代表任何真实模型表现。本次统计变更没有新模型调用；首次实图开发对照另见 [DEV-01](PORTRAIT_JUDGE_DEV01_CANYON.md)，仍未完成人工留出盲评。
