@@ -1,7 +1,11 @@
+import hashlib
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import Mock, patch
 import unittest
 
-from travel_photo_assistant.framing_judge import AXES, main, review_pair
+from travel_photo_assistant.framing_judge import AXES, EMPTY_SCENE_PROMPT, PROMPT, main, review_pair
 
 
 def output(winner):
@@ -28,6 +32,28 @@ class FramingJudgeTest(unittest.TestCase):
             result = review_pair(Mock(return_value=value), (b"first", b"second"), flip=False)
             self.assertEqual(result["status"], status)
             self.assertIsNone(result["winner"])
+
+    def test_cli_uses_target_specific_rubric_and_records_it(self):
+        for flags, target, rubric in [((), "portrait", PROMPT),
+                                     (("--review-target", "empty_scene"), "empty_scene", EMPTY_SCENE_PROMPT)]:
+            with TemporaryDirectory() as tmp, \
+                 patch("travel_photo_assistant.framing_judge.prepare_pair", return_value=(b"a", b"b")), \
+                 patch("travel_photo_assistant.framing_judge.load_dotenv"), \
+                 patch("travel_photo_assistant.framing_judge.GeminiVisionAdapter") as adapter:
+                out = Path(tmp) / "receipt.json"
+                judge = adapter.return_value._generate
+                judge.return_value = output("tie")
+                rc = main(["--a", "a", "--b", "b", "--intent", "Person and scenery",
+                           "--model", "gemini-test", "--out", str(out), "--confirm-free-project",
+                           "--allow-both-images-to-gemini", *flags])
+                self.assertEqual(rc, 0)
+                self.assertEqual([c.args[0] for c in judge.call_args_list], [rubric, rubric])
+                for call in judge.call_args_list:
+                    self.assertEqual(call.args[1], {"intent": "Person and scenery"})
+                report = json.loads(out.read_text(encoding="utf-8"))
+                self.assertEqual(report["review_target"], target)
+                self.assertEqual(report["rubric_sha256"], hashlib.sha256(rubric.encode()).hexdigest())
+                self.assertIsNone(report["winner"])
 
     def test_neither_image_leaves_without_both_authorizations(self):
         with patch("urllib.request.urlopen") as transport, patch("sys.stderr"):
