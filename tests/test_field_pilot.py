@@ -68,6 +68,43 @@ class FieldPilotTest(unittest.TestCase):
             self.assertEqual(ex.exception.code, 2)
             transport.assert_not_called()
 
+    def test_invalid_observation_coordinates_do_not_break_fallback_overlay(self):
+        adapter = RuleBasedOfflineVisionAdapter()
+        adapter.api_key = "mock-only"
+        observe = adapter.observe
+
+        def malformed(*args, **kwargs):
+            result = observe(*args, **kwargs)
+            result["anchors"].append({
+                "anchor_id": "bad_ground", "kind": "possible_ground",
+                "description": "Mixed coordinate units are unsafe to render",
+                "bbox": [0, 688, 1, 1], "points": [[500, 850]], "fact_ids": [],
+            })
+            return result
+
+        with tempfile.TemporaryDirectory() as tmp:
+            photo, out = Path(tmp) / "scene.jpg", Path(tmp) / "out"
+            Image.new("RGB", (300, 400), (32, 48, 64)).save(photo)
+            with patch("travel_photo_assistant.field_pilot.load_dotenv"), \
+                 patch("travel_photo_assistant.field_pilot.GeminiVisionAdapter", return_value=adapter), \
+                 patch.object(adapter, "observe", side_effect=malformed), \
+                 patch.object(adapter, "plan") as plan:
+                result = main(["--photo", str(photo), "--out", str(out), "--goal", "Travel portrait",
+                               "--model", "gemini-test", "--mode", "prompt_only",
+                               "--confirm-free-project", "--allow-photo-to-gemini"])
+                plan.assert_not_called()
+            self.assertEqual(result, 1)
+            run = json.loads((out / "run.json").read_text(encoding="utf-8"))
+            observation = json.loads((out / "observation.json").read_text(encoding="utf-8"))
+            fallback = json.loads((out / "plan.json").read_text(encoding="utf-8"))
+            self.assertFalse(run["accepted"])
+            self.assertTrue(run["fallback"])
+            self.assertEqual(observation["anchors"][-1]["bbox"], [0, 688, 1, 1])
+            self.assertEqual(fallback["status"], "hold")
+            self.assertIsNone(fallback["subject_placement_guide"])
+            with Image.open(out / "overlay.jpg") as preview:
+                self.assertEqual(preview.size, (300, 400))
+
     def test_shared_observation_is_sent_to_three_planners_once(self):
         req = RuntimeInput.from_dict(_base_runtime_dict(hints={
             "scene_tags": ["coast", "leading_line"],
