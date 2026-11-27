@@ -31,6 +31,7 @@ schemas下文件采用JSON Schema Draft 2020-12，供服务器验证。
 14. 对语义前提、光照判断和移动条件的检查可能需要视觉复核或用户输入，不能声称所有项都靠Schema完全自动证明。
 15. 观察器返回needs_subject_selection时，规划器必须hold且primary_plan=null、actions=[]、active_action_id=null，只通过fallback_instruction提示用户选择目标，不能替用户任意挑人。
 16. v0.1只输出人工指导，不自动操作相机。change_zoom/exposure_adjust缺少完整机器目标参数，禁止将instruction文本直接解释成控制命令；需要自动设置时应新增数值参数、单位、范围与执行后读回校验。
+17. 观测为 observed 且无人物时，有可依据的候选站位才提供人物虚框和对应取景；缺少站位证据时可返回 hold，不提供虚框、裁剪、主方案、备选或动作，并用 fallback_instruction 请求缺失画面。可见地面不等于现场安全确认。
 
 四、从图像坐标到预览界面
 保留图像转正、缩放、aspect-fit/aspect-fill裁切、预览镜像的变换链。

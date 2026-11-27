@@ -138,6 +138,73 @@ class FieldPilotTest(unittest.TestCase):
                 self.assertIsNone(rendered.subject_bbox_px)
                 self.assertIsNone(rendered.target_bbox_px)
 
+    def test_observed_empty_scene_can_hold_and_ask_to_see_ground(self):
+        req = RuntimeInput.from_dict(_base_runtime_dict(
+            subject_id=None, subject_count=None,
+            hints={"detected_person_count": 0, "scene_tags": ["forest"]},
+        ))
+        assets = AssetPaths.default()
+        adapter = RuleBasedOfflineVisionAdapter()
+        offline_plan = adapter.plan
+
+        def hold(*args, **kwargs):
+            observation = args[1]
+            self.assertEqual(observation["status"], "observed")
+            self.assertIsNone(observation["selected_subject"])
+            self.assertFalse(any(a["kind"] == "possible_ground" for a in observation["anchors"]))
+            plan = offline_plan(*args, **kwargs)
+            plan.update(
+                status="hold", subject_placement_guide=None, crop_recommendation=None,
+                primary_plan=None, alternative=None, actions=[], active_action_id=None,
+                fallback_instruction="请重新取景，把前景地面拍进画面。",
+            )
+            return plan
+
+        with patch.object(adapter, "plan", side_effect=hold):
+            arms, report = run_comparison(adapter, assets, req, empty_scene=True)
+
+        self.assertEqual(report["framing_shortlist"]["status"], "no_supported_candidate")
+        self.assertEqual(report["framing_shortlist"]["groups"], [])
+        with tempfile.TemporaryDirectory() as tmp:
+            photo = Path(tmp) / "fixture.jpg"
+            Image.new("RGB", (300, 400)).save(photo)
+            for mode, (arm, _) in arms.items():
+                self.assertTrue(arm.accepted, arm.reason)
+                self.assertFalse(arm.downgraded_to_fallback)
+                self.assertEqual(arm.plan["status"], "hold")
+                self.assertEqual(arm.plan["fallback_instruction"], "请重新取景，把前景地面拍进画面。")
+                self.assertEqual(arm.plan["actions"], [])
+                self.assertEqual(report["arm_placement"][mode]["status"], "no_accepted_person_guide")
+                rendered = render_overlay(photo, arm.plan, Path(tmp) / (mode + ".jpg"),
+                                          observation=arm.observation)
+                self.assertIsNone(rendered.ghost_bbox_px)
+                self.assertIsNone(rendered.crop_rect_px)
+
+    def test_empty_scene_hold_does_not_allow_geometry_or_a_plan(self):
+        from travel_photo_assistant.controller import TravelPhotoController
+        req = RuntimeInput.from_dict(_base_runtime_dict(
+            subject_id=None, subject_count=None,
+            hints={"detected_person_count": 0, "scene_tags": ["forest"]},
+        ))
+        ctrl = TravelPhotoController(RuleBasedOfflineVisionAdapter(), assets=AssetPaths.default())
+        result = ctrl.run_slow_loop(req)
+        self.assertTrue(result.accepted)
+        checks = ctrl.validator.validate_shot_plan(
+            dict(result.plan, status="hold", fallback_instruction=" "),
+            result.observation, req, result.retrieval.selected_cards,
+        )
+        self.assertLessEqual(
+            {"PLACEMENT_GUIDE_NOT_ALLOWED", "CROP_NOT_ALLOWED",
+             "EMPTY_SCENE_HOLD_HAS_GUIDANCE", "EMPTY_SCENE_HOLD_MISSING_FALLBACK"},
+            {error.code for error in checks.errors},
+        )
+        checks = ctrl.validator.validate_shot_plan(
+            dict(result.plan, subject_placement_guide=None, crop_recommendation=None),
+            result.observation, req, result.retrieval.selected_cards,
+        )
+        self.assertLessEqual({"MISSING_PLACEMENT_GUIDE", "MISSING_CROP_RECOMMENDATION"},
+                             {error.code for error in checks.errors})
+
     def test_empty_scene_excludes_unselected_people_and_existing_subject(self):
         for count in (1, 2):
             req = RuntimeInput.from_dict(_base_runtime_dict(

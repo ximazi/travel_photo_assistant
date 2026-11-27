@@ -362,7 +362,28 @@ class BusinessRuleValidator:
         # --- Person ghost box (Rule III.17 / III.18) -------------------------
         guide = plan.get("subject_placement_guide")
         subject_present = observation.get("selected_subject") is not None
-        obs_status_for_guide = observation.get("status")
+        obs_status_for_guide = obs_status
+        observed_empty = obs_status == "observed" and not subject_present
+        empty_scene_hold = observed_empty and status == "hold"
+
+        if empty_scene_hold:
+            # A deliberate abstention is not a rejected plan. Keep it free of
+            # executable guidance and preserve the request for more evidence.
+            if (
+                primary_plan is not None or plan.get("alternative") is not None
+                or actions or active_action_id is not None
+            ):
+                result.add_error(
+                    "EMPTY_SCENE_HOLD_HAS_GUIDANCE",
+                    "An empty scene hold must have no primary plan, alternative, actions or active action.",
+                    "status",
+                )
+            if not str(plan.get("fallback_instruction", "")).strip():
+                result.add_error(
+                    "EMPTY_SCENE_HOLD_MISSING_FALLBACK",
+                    "An empty scene hold must ask for the missing view or evidence.",
+                    "fallback_instruction",
+                )
 
         if guide is not None:
             if not isinstance(guide, dict):
@@ -434,7 +455,7 @@ class BusinessRuleValidator:
                             "crop_recommendation.crop_rect",
                         )
 
-        if obs_status_for_guide == "observed" and not subject_present and crop is None:
+        if observed_empty and not empty_scene_hold and crop is None:
             result.add_error(
                 "MISSING_CROP_RECOMMENDATION",
                 "No subject in frame: the plan must provide crop_recommendation so the landscape "
@@ -458,8 +479,8 @@ class BusinessRuleValidator:
                 "crop_recommendation",
             )
 
-        # Rule III.17: a scene with nobody in frame must still say where to stand.
-        if obs_status_for_guide == "observed" and not subject_present and guide is None:
+        # Rule III.17: a non-abstaining empty-scene plan must say where to stand.
+        if observed_empty and not empty_scene_hold and guide is None:
             result.add_error(
                 "MISSING_PLACEMENT_GUIDE",
                 "No subject in frame: the plan must provide subject_placement_guide so the user "
