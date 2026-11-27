@@ -132,19 +132,28 @@ def summarize(pairs, names):
                 same = answered and first == second
                 outcome = first if same else "uncertain"
                 stable[target] = outcome
+                h = human[target]
+                picked = outcome in {"A", "B"}
+                human_picked = h in {"A", "B"}
                 for group in ("all", scene):
                     c = counters[(name, group, target)]
                     c["pairs"] += 1
                     c["invalid_or_missing_orders"] += sum(entry is None for entry in parsed)
                     c["both_valid"] += int(answered)
                     c["swap_stable"] += int(same)
-                    c["decisive_swap_stable"] += int(same and outcome != "uncertain")
+                    c["stable_model_picks"] += int(picked)
+                    c["stable_model_ties"] += int(outcome == "tie")
                     c["abstained_or_unstable"] += int(outcome == "uncertain")
                     c["human_decided"] += int(human[target] != "uncertain")
                     c["human_decided_model_covered"] += int(human[target] != "uncertain" and outcome != "uncertain")
                     c["matches_human"] += int(human[target] != "uncertain" and human[target] == outcome)
                     c["human_ties"] += int(human[target] == "tie")
-                    c["human_tie_model_picked"] += int(human[target] == "tie" and outcome in {"A", "B"})
+                    c["human_tie_model_picked"] += int(h == "tie" and picked)
+                    c["matches_human_ties"] += int(h == "tie" and outcome == "tie")
+                    c["human_picks"] += int(human_picked)
+                    c["human_pick_model_picked"] += int(human_picked and picked)
+                    c["human_pick_model_tied"] += int(human_picked and outcome == "tie")
+                    c["matches_human_picks"] += int(human_picked and h == outcome)
             votes[pair][name] = stable
     return {"metrics": [{"model": model, "scene": scene, "target": target, **counts}
                         for (model, scene, target), counts in sorted(counters.items())],
