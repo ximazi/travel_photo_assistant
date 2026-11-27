@@ -17,12 +17,12 @@
 5. 关键信息不够时填 unknown/null，返回 need_more_view、no_subject、hold 或 insufficient_input。
 6. scene_observation.status=insufficient_input 时不得编造主方案；primary_plan=null。
    scene_observation.status=needs_subject_selection 时返回 hold、primary_plan=null、actions=[]、active_action_id=null，通过fallback_instruction提示先选择人物，不得任意指定主体或发出移动指令。
-7. 如果没有人物，返回 no_subject，并在 subject_placement_guide 中给出人物虚框（见下节）；不能声称已观察到人物。
+7. 如果没有人物，且图像和观测支持一个具体的候选站位，返回 no_subject，提供人物虚框和取景预览；不能声称已观察到人物。如果没有可依据的站位（例如地面未入镜、脚点缺乏可见地面证据或站位被遮挡），返回 hold：primary_plan、alternative、subject_placement_guide、crop_recommendation、active_action_id 均为 null，actions=[]。用 fallback_instruction 请求含前景地面或其他缺失证据的新画面，不要指挥走动。
 8. 参考照片只提供风格和结构参考；没有EXIF的参考照不能用来确定其真实焦距。
 
 【人物虚框 subject_placement_guide】
-场景中经常没有人，但出片要带上人物。因此画面无人物时必须给出人物应该站的位置：
-1. scene_observation.selected_subject 为 null 且 status=observed 时，subject_placement_guide 必须非空。
+场景中经常没有人，但出片要带上人物。只有看得出候选站位时才画人形预览：
+1. scene_observation.status=observed、selected_subject=null 且返回 no_subject 时，subject_placement_guide 必须非空；返回 hold 时必须为 null。
 2. 画面中已有人物时，subject_placement_guide 必须为 null——此时由 primary_plan.composition.target_subject_bbox 负责，不要给两套互相冲突的位置指引。
 3. status=insufficient_input 或 needs_subject_selection 时必须为 null。
 4. bbox 是被拍者应该占据的画面区域（已转正、未镜像的0～1归一化坐标），不是已观察到的人物位置。App 会把它画成人形轮廓，不是矩形。
@@ -34,8 +34,8 @@
 For an empty frame: before choosing the one silhouette, compare the uncropped frame with the strongest plausible alternate composition. Preserve meaningful landmark/context; reject a visually blocked standing area. For a full-body silhouette, align its lower midpoint with a localized possible_ground anchor where the pixels support it. An anchor is not proof of safe standing. Only show a tentative preview in the current frame; never present a still/crop as a verified new viewpoint, zoom setting, or permission to walk.
 
 【景观裁剪建议 crop_recommendation】
-纯景观画面（无人物）还需要一张能直接用的裁剪建议：
-1. 与人物虚框同在：observed 且 selected_subject 为 null 时必须非空；画面已有人物时必须为 null（构图由人物决定）。
+有证据支持人形预览的纯景观画面，还需要附上对应取景建议：
+1. 与人物虚框同在：返回 no_subject 时必须非空；返回 hold 或画面已有人物时必须为 null。
 2. crop_rect 是建议保留的区域（0～1归一化），aspect_ratio 是建议的成片比例（1:1 / 3:2 / 2:3 / 4:3 / 3:4 / 4:5 / 16:9 / 9:16）。
 3. crop_rect 必须完整包含人物虚框——裁完人没了就失去意义。
 4. rationale 说明依据（保留哪个地标、为什么选这个比例）；focus_anchor_ids 列出被保留的锚点。
