@@ -5,7 +5,9 @@ from tempfile import TemporaryDirectory
 from unittest.mock import Mock, patch
 import unittest
 
-from travel_photo_assistant.framing_judge import AXES, EMPTY_SCENE_PROMPT, PROMPT, main, review_pair
+from travel_photo_assistant.framing_judge import (
+    AXES, EMPTY_SCENE_PROMPT, PLACEMENT_PROMPT, PROMPT, main, review_pair,
+)
 
 
 def output(winner):
@@ -34,8 +36,11 @@ class FramingJudgeTest(unittest.TestCase):
             self.assertIsNone(result["winner"])
 
     def test_cli_uses_target_specific_rubric_and_records_it(self):
-        for flags, target, rubric in [((), "portrait", PROMPT),
-                                     (("--review-target", "empty_scene"), "empty_scene", EMPTY_SCENE_PROMPT)]:
+        for flags, target, rubric in (
+            ((), "portrait", PROMPT),
+            (("--review-target", "empty_scene"), "empty_scene", EMPTY_SCENE_PROMPT),
+            (("--review-target", "placement", "--confirm-matched-placement-pair"), "placement", PLACEMENT_PROMPT),
+        ):
             with TemporaryDirectory() as tmp, \
                  patch("travel_photo_assistant.framing_judge.prepare_pair", return_value=(b"a", b"b")), \
                  patch("travel_photo_assistant.framing_judge.load_dotenv"), \
@@ -54,6 +59,15 @@ class FramingJudgeTest(unittest.TestCase):
                 self.assertEqual(report["review_target"], target)
                 self.assertEqual(report["rubric_sha256"], hashlib.sha256(rubric.encode()).hexdigest())
                 self.assertIsNone(report["winner"])
+
+    def test_placement_requires_operator_to_confirm_matched_previews(self):
+        with patch("travel_photo_assistant.framing_judge.GeminiVisionAdapter") as provider, patch("sys.stderr"):
+            with self.assertRaises(SystemExit) as caught:
+                main(["--a", "a", "--b", "b", "--intent", "position", "--model", "gemini-test",
+                      "--out", "x", "--confirm-free-project", "--allow-both-images-to-gemini",
+                      "--review-target", "placement"])
+            self.assertEqual(caught.exception.code, 2)
+            provider.assert_not_called()
 
     def test_neither_image_leaves_without_both_authorizations(self):
         with patch("urllib.request.urlopen") as transport, patch("sys.stderr"):
