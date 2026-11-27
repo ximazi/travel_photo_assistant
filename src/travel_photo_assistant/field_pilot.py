@@ -15,6 +15,7 @@ from uuid import uuid4
 
 from .adapters.base import VisionModelAdapter
 from .adapters.providers import GeminiVisionAdapter
+from .adapters.gemini_grid import GeminiGridPilotAdapter
 from .config import AssetPaths, RuntimeConfig
 from .controller import TravelPhotoController
 from .env_loader import load_dotenv
@@ -229,6 +230,7 @@ def run_comparison(adapter, assets, req, *, empty_scene=False):
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--gemini-grid-geometry", action="store_true", help="Opt in to experimental Gemini integer geometry transport.")
     p.add_argument("--photo", required=True, type=Path)
     p.add_argument("--goal", required=True, help="拍摄意图，不包含人工标注/参考答案")
     p.add_argument("--out", required=True, type=Path, help="新增私有结果目录，不要用 Git checkout 下的目录")
@@ -259,7 +261,7 @@ def main(argv: list[str] | None = None) -> int:
     if a.out.exists():
         p.error("--out must be a new, private result directory.")
     load_dotenv()
-    adapter = GeminiVisionAdapter(model_name=a.model)
+    adapter = (GeminiGridPilotAdapter if a.gemini_grid_geometry else GeminiVisionAdapter)(model_name=a.model)
     if not adapter.api_key:
         p.error("GEMINI_API_KEY is not configured.")
     try:
@@ -284,7 +286,8 @@ def main(argv: list[str] | None = None) -> int:
     for mode, (result, elapsed_ms) in results.items():
         target = a.out / mode if comparison is not None else a.out
         target.mkdir(mode=0o700, exist_ok=True)
-        write_arm(target, result, elapsed_ms, mode, a.model, assets, image, req)
+        write_arm(target, result, elapsed_ms, mode, a.model, assets, image, req,
+                  geometry_transport="gemini_grid1000_v1" if a.gemini_grid_geometry else "canonical_float")
     if comparison is not None:
         if a.compare_empty_scene:
             export_clean_crops(image, comparison["framing_shortlist"], a.out / "clean_review")
@@ -318,8 +321,8 @@ def overlay_plan(result, req):
     return plan
 
 
-def write_arm(out, result, elapsed_ms, mode, model, assets, image, req):
-    run = {"status": "needs_human_review", "provider": "gemini", "model": model, "mode": mode,
+def write_arm(out, result, elapsed_ms, mode, model, assets, image, req, *, geometry_transport="canonical_float"):
+    run = {"status": "needs_human_review", "provider": "gemini", "model": model, "mode": mode, "geometry_transport": geometry_transport,
            "elapsed_ms": elapsed_ms, "accepted": result.accepted,
            "fallback": result.downgraded_to_fallback, "validation_retries_enabled": False,
            "image_sha256": hashlib.sha256(image).hexdigest(),
