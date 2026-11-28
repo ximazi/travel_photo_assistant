@@ -5,6 +5,32 @@ silhouette guide. A public empty photograph can test diagnosis and candidate
 ranking only. It cannot provide an actual retake, a usable foothold, or a
 shutter outcome.
 
+## Capture-to-review dry run (before recruiting or shooting a scored pair)
+
+Choose a single capture path for both arms. Make two disposable scene-only
+captures, close the capture screen, then retrieve both original files to
+private storage. Confirm they decode at the expected orientation, retain
+their own original bytes, and do not depend on a thumbnail or screenshot.
+Generate two anonymous review exports with the same documented orientation,
+color rendering and resizing; open both in the intended reviewer viewer.
+Preserve a private mapping of the two originals to the neutral export IDs.
+Do not treat this dry run as photography-quality evidence.
+
+- **First feasibility run:** if extraction from the app is unverified, use the
+  same phone and stock camera for both arms, and use a separate screen to
+  show the guide only after the unguided shutter and reset check. Mark this
+  as a test of the guide, not app-camera integration.
+- **App-camera validation:** [Android smoke #15](https://github.com/ximazi/travel_photo_assistant/pull/15)
+  verifies file save and decode on a virtual camera but uses app-private
+  temporary cache. Require an operator retrieval path on the target device
+  and complete the two-file dry run before claiming end-to-end validation.
+- Keep review rendering consistent. Prefer identical SDR review exports
+  from both arms and keep original files unchanged. A stock camera may
+  produce Ultra HDR even when the extension is .jpg; verify consistent
+  rendering in the review viewer or mark the case as unsuitable for blind
+  color comparison rather than mixing render paths.
+  See [CameraX output formats](https://developer.android.com/reference/androidx/camera/core/ImageCapture).
+
 ## One same-scene feasibility pair
 
 1. Before shooting, record composition intent, device, starting lens/view,
