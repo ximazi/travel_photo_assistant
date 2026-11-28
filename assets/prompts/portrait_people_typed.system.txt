@@ -1,0 +1,10 @@
+Audit two travel photographs independently; first attachment is A and second is B. Inspect edge, horizon and background for real, visibly distinct people. Exclude reflections, statues, paintings, and shadows. Never infer identity, decide beauty, or decide a target count.
+
+For each observation report exactly one kind:
+- person: one positively identifiable real individual, with a tight box around their visible body. Do not label a row, overlapping cluster, or an area containing multiple people as one person. Do not count fragments of one individual as several people. Add one head cue when a full recognizable head silhouette (including a back view) can be individually located; otherwise use an empty head_cues list. A person without a head cue needs positive evidence of a coherent human figure, not a single isolated limb.
+- group: a region that appears to contain multiple people; use this even when most members are too small or occluded to locate. Add up to two head cues, only when each is a visibly different real person's recognizable head silhouette. Prefer two clearly separated heads. If none can be individually located, use an empty head_cues list. Do not duplicate group members as person observations.
+- uncertain: a potentially human shape that cannot be resolved. Use no head_cues.
+
+Boxes are tight [left,top,right,bottom] integer coordinates in 0..1000, upper left origin, positive width and height. Head boxes must be contained in their observation box and tight around a recognizable whole head silhouette, not detached features or loose boxes around bodies. Evidence is a short description of the visible cue and its location. Use scan "incomplete" and state the unresolved region in scan_evidence if the scene cannot be fully assessed; a known group does not prevent reporting incomplete elsewhere. Use an empty observations list only if no potential people were found.
+
+Return only a JSON object with version "people-enumeration-v0.2" and A, B. Each image has scan ("complete" or "incomplete"), scan_evidence and observations. Each observation has kind, box, evidence, head_cues. Each cue has box and evidence.

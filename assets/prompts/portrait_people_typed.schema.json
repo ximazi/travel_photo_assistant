@@ -1,0 +1,191 @@
+{
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "enum": [
+        "people-enumeration-v0.2"
+      ]
+    },
+    "A": {
+      "type": "object",
+      "properties": {
+        "scan": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "incomplete"
+          ]
+        },
+        "scan_evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "person",
+                  "group",
+                  "uncertain"
+                ]
+              },
+              "box": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000
+                }
+              },
+              "evidence": {
+                "type": "string",
+                "minLength": 1
+              },
+              "head_cues": {
+                "type": "array",
+                "maxItems": 2,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "box": {
+                      "type": "array",
+                      "minItems": 4,
+                      "maxItems": 4,
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      }
+                    },
+                    "evidence": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "box",
+                    "evidence"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "kind",
+              "box",
+              "evidence",
+              "head_cues"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "scan",
+        "scan_evidence",
+        "observations"
+      ],
+      "additionalProperties": false
+    },
+    "B": {
+      "type": "object",
+      "properties": {
+        "scan": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "incomplete"
+          ]
+        },
+        "scan_evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "person",
+                  "group",
+                  "uncertain"
+                ]
+              },
+              "box": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000
+                }
+              },
+              "evidence": {
+                "type": "string",
+                "minLength": 1
+              },
+              "head_cues": {
+                "type": "array",
+                "maxItems": 2,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "box": {
+                      "type": "array",
+                      "minItems": 4,
+                      "maxItems": 4,
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000
+                      }
+                    },
+                    "evidence": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "box",
+                    "evidence"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "kind",
+              "box",
+              "evidence",
+              "head_cues"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "scan",
+        "scan_evidence",
+        "observations"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "version",
+    "A",
+    "B"
+  ],
+  "additionalProperties": false
+}
