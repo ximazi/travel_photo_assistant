@@ -1,0 +1,126 @@
+{
+  "type": "object",
+  "properties": {
+    "version": {
+      "enum": [
+        "people-enumeration-v0.1"
+      ]
+    },
+    "A": {
+      "type": "object",
+      "properties": {
+        "scan": {
+          "enum": [
+            "complete",
+            "incomplete"
+          ]
+        },
+        "scan_evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instances": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "enum": [
+                  "confirmed",
+                  "possible"
+                ]
+              },
+              "box": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000
+                }
+              },
+              "evidence": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "state",
+              "box",
+              "evidence"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "scan",
+        "scan_evidence",
+        "instances"
+      ],
+      "additionalProperties": false
+    },
+    "B": {
+      "type": "object",
+      "properties": {
+        "scan": {
+          "enum": [
+            "complete",
+            "incomplete"
+          ]
+        },
+        "scan_evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instances": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "enum": [
+                  "confirmed",
+                  "possible"
+                ]
+              },
+              "box": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000
+                }
+              },
+              "evidence": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "state",
+              "box",
+              "evidence"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "scan",
+        "scan_evidence",
+        "instances"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "version",
+    "A",
+    "B"
+  ],
+  "additionalProperties": false
+}
